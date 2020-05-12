@@ -1,53 +1,47 @@
 #include "pch.h"
+#include "TelemVar.hpp"
+#include <vector>
+#include <set>
 
-scs_telemetry_register_for_channel_t register_for_channel = NULL;
-scs_telemetry_unregister_from_channel_t unregister_from_channel = NULL;
-scs_log_t game_log = NULL;
+scs_log_t game_log = nullptr;
+HANDLE timer_queue = NULL;
+
+std::vector<ChannelTelemVar*> channels;
+std::set<TelemVar> telemvars;
 
 void log_line(const scs_log_type_t type, const char* const text, ...) {
 	if (!game_log) {
 		return;
 	}
-	char formated[1000];
+	char formatted[1000];
 
 	va_list args;
 	va_start(args, text);
-	vsnprintf_s(formated, sizeof(formated), _TRUNCATE, text, args);
-	formated[sizeof(formated) - 1] = 0;
+	vsnprintf_s(formatted, sizeof(formatted), _TRUNCATE, text, args);
+	formatted[sizeof(formatted) - 1] = '\0';
 	va_end(args);
 
-	game_log(type, formated);
+	game_log(type, formatted);
 }
 
-SCSAPI_VOID telemetry_store_float(const scs_string_t name, const scs_u32_t index, const scs_value_t* const value, const scs_context_t context) {
-	assert(context);
-	scs_float_t* const storage = static_cast<scs_float_t*>(context);
+VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
+	std::vector<char> bytebuffer;
 
-	if (value) {
-		assert(value->type == SCS_VALUE_TYPE_float);
-		*storage = value->value_float.value;
+	for (ChannelTelemVar* ctv : channels) {
+		ctv->write_to_buf(bytebuffer);
 	}
-	else {
-		*storage = 0.0f;
-	}
-}
 
-const scs_named_value_t* find_attribute(const scs_telemetry_configuration_t& configuration, const char* const name, const scs_u32_t index, const scs_value_type_t expected_type) {
-	for (const scs_named_value_t* current = configuration.attributes; current->name; ++current) {
-		if ((current->index != index) || (strcmp(current->name, name) != 0)) {
-			continue;
-		}
-		if (current->value.type == expected_type) {
-			return current;
-		}
-		log_line(SCS_LOG_TYPE_error, "Attribute %s has unexpected type %u", name, static_cast<unsigned>(current->value.type));
-		break;
-	}
-	return NULL;
+	assert(bytebuffer.size() == 6);
+
+	float speed = *reinterpret_cast<float*>(&bytebuffer[2]) * 3.6f;
+
+	log_line(SCS_LOG_TYPE_message, "lblinker: %s, rblinker: %s, speed: %f", 
+			 (bytebuffer[0] ? "on" : "off"), 
+			 (bytebuffer[1] ? "on" : "off"), 
+			 speed);
 }
 
 SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_init_params_t* const params) {
-
 	if (version != SCS_TELEMETRY_VERSION_1_00) {
 		return SCS_RESULT_unsupported;
 	}
@@ -89,22 +83,51 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 		log_line(SCS_LOG_TYPE_warning, "Unsupported game, some features or values might behave incorrectly");
 	}
 
-	register_for_channel = version_params->register_for_channel;
-	unregister_from_channel = version_params->unregister_from_channel;
+	ChannelTelemVar::reg_chan = version_params->register_for_channel;
+	ChannelTelemVar::unreg_chan = version_params->unregister_from_channel;
 
-	log_line(SCS_LOG_TYPE_message, "Memory telemetry example initialized");
+	channels.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_lblinker, SCS_VALUE_TYPE_bool));
+	channels.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_rblinker, SCS_VALUE_TYPE_bool));
+	channels.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_speed, SCS_VALUE_TYPE_float));
+
+	for (ChannelTelemVar* ctv : channels) {
+		ctv->adjust_channels();
+	}
+
+	timer_queue = CreateTimerQueue();
+	if (timer_queue == NULL) {
+		log_line(SCS_LOG_TYPE_error, "Failed to create timer_queue, error: %ul", GetLastError());
+		return SCS_RESULT_generic_error;
+	}
+
+	HANDLE display_state_timer; //ignored, we'll shut it down by deleting the whole queue
+	BOOL result = CreateTimerQueueTimer(&display_state_timer, timer_queue, display_state, NULL, 0, 5000, WT_EXECUTEDEFAULT);
+	if (!result) {
+		log_line(SCS_LOG_TYPE_error, "failed to create timer, error %ul", GetLastError());
+		return SCS_RESULT_generic_error;
+	}
+
+	log_line(SCS_LOG_TYPE_message, "YATTS initialized");
 	return SCS_RESULT_ok;
 }
 
 SCSAPI_VOID scs_telemetry_shutdown(void) {
+	BOOL result;
 
-	unregister_from_channel = NULL;
-	register_for_channel = NULL;
-	game_log = NULL;
+	result = DeleteTimerQueueEx(timer_queue, NULL);
+	timer_queue = NULL;
+	assert(result);
+
+	for (ChannelTelemVar* ctv : channels) {
+		delete ctv;
+	}
+	channels.clear();
+
+	ChannelTelemVar::reg_chan = nullptr;
+	ChannelTelemVar::unreg_chan = nullptr;
+	game_log = nullptr;
 }
 
-
-BOOL APIENTRY DllMain(HMODULE module, DWORD  reason_for_call, LPVOID reseved) {
+BOOL APIENTRY DllMain(HMODULE module, DWORD reason_for_call, LPVOID reseved) {
 	return TRUE;
 }
-
