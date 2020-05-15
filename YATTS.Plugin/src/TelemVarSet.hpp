@@ -5,28 +5,6 @@
 #include <vector>
 #include <set>
 
-struct TelemVarCmp {
-	using is_transparent = void;
-
-	bool operator()(TelemVar* const& lhs, const char* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs->name < rhs;
-	}
-
-	bool operator()(const char* const& lhs, TelemVar* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs < rhs->name;
-	}
-
-	bool operator()(TelemVar* const& lhs, TelemVar* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs->name < rhs->name;
-	}
-};
-
 class TelemVarSet {
 	public:
 
@@ -43,7 +21,7 @@ class TelemVarSet {
 	}
 
 	TelemVar* try_get(const char* name) {
-		std::set<TelemVar*, TelemVarCmp>::iterator result = config_vars_set.find(name);
+		std::set<TelemVar*, TelemVarPtrCmp>::iterator result = config_vars_set.find(name);
 		return result != config_vars_set.end() ? *result : nullptr;
 	}
 
@@ -91,10 +69,10 @@ class TelemVarSet {
 	}
 
 	std::vector<TelemVar*> config_vars_vec;
-	std::set<TelemVar*, TelemVarCmp> config_vars_set;
+	std::set<TelemVar*, TelemVarPtrCmp> config_vars_set;
 };
 
-struct TelemVarSetCmp {
+struct TelemVarSetPtrCmp {
 	using is_transparent = void;
 
 	bool operator()(TelemVarSet* const& lhs, const char* const& rhs) const {

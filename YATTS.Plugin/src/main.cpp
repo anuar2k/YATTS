@@ -9,8 +9,8 @@ scs_log_t game_log = nullptr;
 HANDLE timer_queue = NULL;
 
 std::vector<ChannelTelemVar*> channel_vars;
-std::set<TelemVarSet*, TelemVarSetCmp> config_vars;
-std::set<TelemVarSet*, TelemVarSetCmp> event_vars;
+std::set<TelemVarSet*, TelemVarSetPtrCmp> config_vars;
+std::set<TelemVarSet*, TelemVarSetPtrCmp> event_vars;
 
 void log_line(const scs_log_type_t type, const char* const text, ...) {
 	if (!game_log) {
@@ -76,7 +76,7 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
 	assert(config_info);
 
 	#pragma warning(suppress: 6011)
-	std::set<TelemVarSet*, TelemVarSetCmp>::iterator set_search = config_vars.find(config_info->id);
+	std::set<TelemVarSet*, TelemVarSetPtrCmp>::iterator set_search = config_vars.find(config_info->id);
 
 	if (set_search != config_vars.end()) {
 		TelemVarSet* set = *set_search;
@@ -90,7 +90,7 @@ SCSAPI_VOID telemetry_gameplay_event(const scs_event_t event, const void* const 
 	assert(gp_event_info);
 
 	#pragma warning(suppress: 6011)
-	std::set<TelemVarSet*, TelemVarSetCmp>::iterator set_search = event_vars.find(gp_event_info->id);
+	std::set<TelemVarSet*, TelemVarSetPtrCmp>::iterator set_search = event_vars.find(gp_event_info->id);
 
 	if (set_search != event_vars.end()) {
 		TelemVarSet* set = *set_search;
@@ -169,7 +169,7 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	}
 
 	HANDLE display_state_timer; //ignored, we'll shut it down by deleting the whole queue
-	BOOL result = CreateTimerQueueTimer(&display_state_timer, timer_queue, display_state, NULL, 0, 5000, WT_EXECUTEDEFAULT);
+	BOOL result = CreateTimerQueueTimer(&display_state_timer, timer_queue, display_state, NULL, 5000, 5000, WT_EXECUTEDEFAULT);
 	if (!result) {
 		log_line(SCS_LOG_TYPE_error, "failed to create timer, error: %ul", GetLastError());
 		return SCS_RESULT_generic_error;
@@ -181,13 +181,13 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	config_vars.insert(truck_set);
 
 	TelemVarSet* trailer_set = new TelemVarSet(SCS_TELEMETRY_CONFIG_trailer);
-	trailer_set->insert(new TelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, SCS_VALUE_TYPE_u32));
+	trailer_set->insert(new ScalarTelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, SCS_VALUE_TYPE_u32));
 	trailer_set->insert(new StringTelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_id));
 	config_vars.insert(trailer_set);
 
 	TelemVarSet* player_fined_set = new TelemVarSet(SCS_TELEMETRY_GAMEPLAY_EVENT_player_fined);
 	player_fined_set->insert(new StringTelemVar(SCS_TELEMETRY_GAMEPLAY_EVENT_ATTRIBUTE_fine_offence));
-	player_fined_set->insert(new TelemVar(SCS_TELEMETRY_GAMEPLAY_EVENT_ATTRIBUTE_fine_amount, SCS_VALUE_TYPE_s64));
+	player_fined_set->insert(new ScalarTelemVar(SCS_TELEMETRY_GAMEPLAY_EVENT_ATTRIBUTE_fine_amount, SCS_VALUE_TYPE_s64));
 	event_vars.insert(player_fined_set);
 
 	log_line(SCS_LOG_TYPE_message, "YATTS initialized");
