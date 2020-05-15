@@ -38,7 +38,10 @@ class TelemVar {
 		if (index == SCS_U32_NIL) {
 			index = 0;
 		}
+
+		assert(value.type == type);
 		assert(index < storage.size());
+
 		storage[index] = value;
 	}
 
@@ -133,19 +136,22 @@ class StringTelemVar : public TelemVar {
 				scs_string_t string = storage[i].value_string.value;
 				size_t curr_written = 0;
 
-				assert(string);
+				if (string) {
+					do {
+						++curr_written;
+						if (truncate && curr_written == truncate) {
+							buffer.push_back('\0');
+							break;
+						}
 
-				do {
-					++curr_written;
-					if (truncate && curr_written == truncate) {
-						buffer.push_back('\0');
-						break;
+						buffer.push_back(*string);
 					}
-
-					#pragma warning(suppress: 6011)
-					buffer.push_back(*string);
+					while (*string++);
 				}
-				while (*string++);
+				else {
+					buffer.push_back('\0');
+					curr_written += 1;
+				}
 
 				total_written += curr_written;
 			}

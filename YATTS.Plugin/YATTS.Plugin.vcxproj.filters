@@ -8,6 +8,7 @@
     <ClInclude Include="src\pch.h" />
     <ClInclude Include="src\TelemVar.hpp" />
     <ClInclude Include="src\scssdk_value_sizes.h" />
+    <ClInclude Include="src\TelemVarSet.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\main.def" />
