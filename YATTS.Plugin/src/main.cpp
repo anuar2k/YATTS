@@ -34,40 +34,25 @@ VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
 	TelemVarSet* trailer_set = *config_vars.find(SCS_TELEMETRY_CONFIG_trailer);
 	TelemVarSet* player_fined_set = *event_vars.find(SCS_TELEMETRY_GAMEPLAY_EVENT_player_fined);
 
-	for (ChannelTelemVar* ctv : channel_vars) {
-		ctv->write_to_buf(bytebuffer);
-	}
-	for (TelemVar* tv : *truck_set) {
-		tv->write_to_buf(bytebuffer);
-	}
-	for (TelemVar* tv : *trailer_set) {
-		tv->write_to_buf(bytebuffer);
-	}
-	for (TelemVar* tv : *player_fined_set) {
-		tv->write_to_buf(bytebuffer);
-	}
-
-	float speed = *reinterpret_cast<float*>(&bytebuffer[2]) * 3.6f;
-
-	log_line(SCS_LOG_TYPE_message, "channels - lblinker: %s, rblinker: %s, speed: %f", 
-			 (bytebuffer[0] ? "on" : "off"), 
-			 (bytebuffer[1] ? "on" : "off"), 
+	bool lblinker = *reinterpret_cast<bool*>(channel_vars[0]->get_val(SCS_U32_NIL));
+	bool rblinker = *reinterpret_cast<bool*>(channel_vars[1]->get_val(SCS_U32_NIL));
+	float speed = *reinterpret_cast<float*>(channel_vars[2]->get_val(SCS_U32_NIL)) * 3.6f;
+	log_line(SCS_LOG_TYPE_message, "channels - lblinker: %s, rblinker: %s, speed: %f",
+			 (lblinker ? "on" : "off"),
+			 (rblinker ? "on" : "off"),
 			 speed);
 
-	char* pos = &bytebuffer[6];
-	char* pos1 = pos;
-	char* pos2 = pos1 + strlen(pos1) + 1;
-	char* pos3 = pos2 + strlen(pos2) + 1;
-	char* pos4 = pos3 + sizeof(scs_value_u32_t);
-	char* pos5 = pos4 + strlen(pos4) + 1;
-	char* pos6 = pos5 + strlen(pos5) + 1;
+	char* truck_id = reinterpret_cast<char*>((*truck_set)[0]->get_val(SCS_U32_NIL));
+	char* license_plate = reinterpret_cast<char*>((*truck_set)[1]->get_val(SCS_U32_NIL));
+	log_line(SCS_LOG_TYPE_message, "truck_cfg - %s, %s", truck_id, license_plate);
 
-	scs_u32_t wheel_count = *reinterpret_cast<scs_u32_t*>(pos3);
-	scs_u64_t fine = *reinterpret_cast<scs_u64_t*>(pos6);
+	scs_u32_t wheel_count = *reinterpret_cast<scs_u32_t*>((*trailer_set)[0]->get_val(SCS_U32_NIL));
+	char* trailer_id = reinterpret_cast<char*>((*trailer_set)[1]->get_val(SCS_U32_NIL));
+	log_line(SCS_LOG_TYPE_message, "trailer_cfg - %d, %s", wheel_count, trailer_id);
 
-	log_line(SCS_LOG_TYPE_message, "truck_cfg - %s, %s", pos1, pos2);
-	log_line(SCS_LOG_TYPE_message, "trailer_cfg - %d, %s", wheel_count, pos4);
-	log_line(SCS_LOG_TYPE_message, "fine - %s, %d", pos5, fine);
+	char* fine_offence = reinterpret_cast<char*>((*player_fined_set)[0]->get_val(SCS_U32_NIL));
+	scs_s64_t fine_amount = *reinterpret_cast<scs_s64_t*>((*player_fined_set)[1]->get_val(SCS_U32_NIL));
+	log_line(SCS_LOG_TYPE_message, "fine - %s, %d", fine_offence, fine_amount);
 }
 
 SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const event_info, const scs_context_t context) {

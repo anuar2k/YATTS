@@ -19,6 +19,8 @@ class TelemVar abstract {
 
 	virtual void store_value(scs_value_t value, scs_u32_t index) abstract;
 
+	virtual void* get_val(scs_u32_t index) abstract;
+
 	const std::string name;
 	const scs_value_type_t type;
 	const size_t type_size;
@@ -65,7 +67,7 @@ class ScalarTelemVar : public TelemVar {
 				}
 			}
 			else {
-				char* data = reinterpret_cast<char*>(&storage[i].value_bool);
+				char* data = reinterpret_cast<char*>(&storage[i].value_bool.value);
 				for (size_t pos = 0; pos < type_size; ++pos) {
 					buffer.push_back(data[pos]);
 				}
@@ -83,6 +85,14 @@ class ScalarTelemVar : public TelemVar {
 		assert(index < storage.size());
 
 		storage[index] = value;
+	}
+	
+	virtual void* get_val(scs_u32_t index) {
+		if (index == SCS_U32_NIL) {
+			index = 0;
+		}
+
+		return &storage[index].value_bool.value;
 	}
 
 	protected:
@@ -215,6 +225,14 @@ class StringTelemVar : public TelemVar {
 		else {
 			storage[index].push_back('\0');
 		}
+	}
+
+	virtual void* get_val(scs_u32_t index) {
+		if (index == SCS_U32_NIL) {
+			index = 0;
+		}
+
+		return &storage[index][0];
 	}
 
 	const size_t truncate;
