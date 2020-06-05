@@ -4,6 +4,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <functional>
 
 scs_log_t game_log = nullptr;
 HANDLE timer_queue = NULL;
@@ -11,6 +12,26 @@ HANDLE timer_queue = NULL;
 std::vector<ChannelTelemVar*> channel_vars;
 std::set<TelemVarSet*, TelemVarSetPtrCmp> config_vars;
 std::set<TelemVarSet*, TelemVarSetPtrCmp> event_vars;
+
+std::map<std::string, std::map<std::string, scs_u32_t, std::less<>>, std::less<>> dynamic_count_vars = {
+	{SCS_TELEMETRY_CONFIG_hshifter, {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_selector_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_truck, {
+		{SCS_TELEMETRY_CONFIG_ATTRIBUTE_forward_gear_count, 0},
+		{SCS_TELEMETRY_CONFIG_ATTRIBUTE_reverse_gear_count, 0},
+		{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}
+	}},
+	{SCS_TELEMETRY_CONFIG_trailer     , {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".0", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".1", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".2", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".3", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".4", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".5", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".6", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".7", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".8", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}},
+	{SCS_TELEMETRY_CONFIG_trailer ".9", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}}
+};
 
 void log_line(const scs_log_type_t type, const char* const text, ...) {
 	if (!game_log) {
@@ -57,11 +78,27 @@ VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
 
 SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const event_info, const scs_context_t context) {
 	assert(event == SCS_TELEMETRY_EVENT_configuration);
-	const scs_telemetry_configuration_t* config_info = static_cast<const scs_telemetry_configuration_t*>(event_info);
+	const scs_telemetry_configuration_t* const config_info = static_cast<const scs_telemetry_configuration_t*>(event_info);
 	assert(config_info);
 
+	//update dynamic count
 	#pragma warning(suppress: 6011)
-	std::set<TelemVarSet*, TelemVarSetPtrCmp>::iterator set_search = config_vars.find(config_info->id);
+	auto dyn_count_set_search = dynamic_count_vars.find(config_info->id);
+	if (dyn_count_set_search != dynamic_count_vars.end()) {
+		std::map<std::string, scs_u32_t, std::less<>>& set = dyn_count_set_search->second;
+		const scs_named_value_t* attributes = config_info->attributes;
+		while (attributes->name) {
+			auto to_update_search = set.find(attributes->name);
+			if (to_update_search != set.end()) {
+				assert(attributes->value.type == SCS_VALUE_TYPE_u32);
+				to_update_search->second = attributes->value.value_u32.value;
+			}
+			++attributes;
+		}
+	}
+
+	#pragma warning(suppress: 6011)
+	auto set_search = config_vars.find(config_info->id);
 
 	if (set_search != config_vars.end()) {
 		TelemVarSet* set = *set_search;
@@ -71,11 +108,11 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
 
 SCSAPI_VOID telemetry_gameplay_event(const scs_event_t event, const void* const event_info, const scs_context_t context) {
 	assert(event == SCS_TELEMETRY_EVENT_gameplay);
-	const scs_telemetry_gameplay_event_t* gp_event_info = static_cast<const scs_telemetry_gameplay_event_t*>(event_info);
+	const scs_telemetry_gameplay_event_t* const gp_event_info = static_cast<const scs_telemetry_gameplay_event_t*>(event_info);
 	assert(gp_event_info);
 
 	#pragma warning(suppress: 6011)
-	std::set<TelemVarSet*, TelemVarSetPtrCmp>::iterator set_search = event_vars.find(gp_event_info->id);
+	auto set_search = event_vars.find(gp_event_info->id);
 
 	if (set_search != event_vars.end()) {
 		TelemVarSet* set = *set_search;
@@ -88,38 +125,24 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	if (version != SCS_TELEMETRY_VERSION_1_01) {
 		return SCS_RESULT_unsupported;
 	}
+
 	const scs_telemetry_init_params_v101_t* const version_params = static_cast<const scs_telemetry_init_params_v101_t*>(params);
 	game_log = version_params->common.log;
 
 	log_line(SCS_LOG_TYPE_message, "Game '%s' %u.%u", version_params->common.game_id, SCS_GET_MAJOR_VERSION(version_params->common.game_version), SCS_GET_MINOR_VERSION(version_params->common.game_version));
 
 	if (strcmp(version_params->common.game_id, SCS_GAME_ID_EUT2) == 0) {
-
-		if (version_params->common.game_version < SCS_TELEMETRY_EUT2_GAME_VERSION_1_03) {
+		if (version_params->common.game_version < SCS_TELEMETRY_EUT2_GAME_VERSION_1_15) {
 			log_line(SCS_LOG_TYPE_error, "Too old version of the game");
-			game_log = NULL;
+			scs_telemetry_shutdown();
 			return SCS_RESULT_unsupported;
-		}
-
-		if (version_params->common.game_version < SCS_TELEMETRY_EUT2_GAME_VERSION_1_07) {
-			log_line(SCS_LOG_TYPE_warning, "This version of the game has less precise output of angular acceleration of the cabin");
-		}
-
-		const scs_u32_t IMPLEMENTED_VERSION = SCS_TELEMETRY_EUT2_GAME_VERSION_CURRENT;
-		if (SCS_GET_MAJOR_VERSION(version_params->common.game_version) > SCS_GET_MAJOR_VERSION(IMPLEMENTED_VERSION)) {
-			log_line(SCS_LOG_TYPE_warning, "Too new major version of the game, some features might behave incorrectly");
 		}
 	}
 	else if (strcmp(version_params->common.game_id, SCS_GAME_ID_ATS) == 0) {
-
-		const scs_u32_t MINIMAL_VERSION = SCS_TELEMETRY_ATS_GAME_VERSION_1_00;
-		if (version_params->common.game_version < MINIMAL_VERSION) {
-			log_line(SCS_LOG_TYPE_warning, "WARNING: Too old version of the game, some features might behave incorrectly");
-		}
-
-		const scs_u32_t IMPLEMENTED_VERSION = SCS_TELEMETRY_ATS_GAME_VERSION_CURRENT;
-		if (SCS_GET_MAJOR_VERSION(version_params->common.game_version) > SCS_GET_MAJOR_VERSION(IMPLEMENTED_VERSION)) {
-			log_line(SCS_LOG_TYPE_warning, "WARNING: Too new major version of the game, some features might behave incorrectly");
+		if (version_params->common.game_version < SCS_TELEMETRY_ATS_GAME_VERSION_1_02) {
+			log_line(SCS_LOG_TYPE_error, "Too old version of the game");
+			scs_telemetry_shutdown();
+			return SCS_RESULT_unsupported;
 		}
 	}
 	else {
@@ -132,34 +155,10 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 
 	if (!events_registered) {
 		log_line(SCS_LOG_TYPE_error, "Unable to register event callbacks");
-		game_log = nullptr;
+		scs_telemetry_shutdown();
 		return SCS_RESULT_generic_error;
 	}
-
-	ChannelTelemVar::reg_chan = version_params->register_for_channel;
-	ChannelTelemVar::unreg_chan = version_params->unregister_from_channel;
-
-	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_lblinker, SCS_VALUE_TYPE_bool));
-	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_rblinker, SCS_VALUE_TYPE_bool));
-	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_speed, SCS_VALUE_TYPE_float));
-
-	for (ChannelTelemVar* ctv : channel_vars) {
-		ctv->adjust_channels();
-	}
-
-	timer_queue = CreateTimerQueue();
-	if (timer_queue == NULL) {
-		log_line(SCS_LOG_TYPE_error, "Failed to create timer_queue, error: %ul", GetLastError());
-		return SCS_RESULT_generic_error;
-	}
-
-	HANDLE display_state_timer; //ignored, we'll shut it down by deleting the whole queue
-	BOOL result = CreateTimerQueueTimer(&display_state_timer, timer_queue, display_state, NULL, 5000, 5000, WT_EXECUTEDEFAULT);
-	if (!result) {
-		log_line(SCS_LOG_TYPE_error, "failed to create timer, error: %ul", GetLastError());
-		return SCS_RESULT_generic_error;
-	}
-
+	//////////////////////////////////////////////////////////////////////
 	TelemVarSet* truck_set = new TelemVarSet(SCS_TELEMETRY_CONFIG_truck);
 	truck_set->insert(new StringTelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_id));
 	truck_set->insert(new StringTelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_license_plate));
@@ -175,16 +174,45 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	player_fined_set->insert(new ScalarTelemVar(SCS_TELEMETRY_GAMEPLAY_EVENT_ATTRIBUTE_fine_amount, SCS_VALUE_TYPE_s64));
 	event_vars.insert(player_fined_set);
 
+	//////////////////////////////////////////////////////////////////////
+	ChannelTelemVar::reg_chan = version_params->register_for_channel;
+	ChannelTelemVar::unreg_chan = version_params->unregister_from_channel;
+
+	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_lblinker, SCS_VALUE_TYPE_bool));
+	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_rblinker, SCS_VALUE_TYPE_bool));
+	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_speed, SCS_VALUE_TYPE_float));
+
+	for (ChannelTelemVar* ctv : channel_vars) {
+		ctv->adjust_channels();
+	}
+	//////////////////////////////////////////////////////////////////////
+	timer_queue = CreateTimerQueue();
+	if (timer_queue == NULL) {
+		log_line(SCS_LOG_TYPE_error, "Failed to create timer_queue, error: %ul", GetLastError());
+		scs_telemetry_shutdown();
+		return SCS_RESULT_generic_error;
+	}
+
+	HANDLE display_state_timer; //ignored, we'll shut it down by deleting the whole queue
+	BOOL result = CreateTimerQueueTimer(&display_state_timer, timer_queue, display_state, NULL, 5000, 5000, WT_EXECUTEDEFAULT);
+	if (!result) {
+		log_line(SCS_LOG_TYPE_error, "failed to create timer, error: %ul", GetLastError());
+		scs_telemetry_shutdown();
+		return SCS_RESULT_generic_error;
+	}
+	//////////////////////////////////////////////////////////////////////
 	log_line(SCS_LOG_TYPE_message, "YATTS initialized");
 	return SCS_RESULT_ok;
 }
 
 SCSAPI_VOID scs_telemetry_shutdown(void) {
-	BOOL result;
+	if (timer_queue) {
+		BOOL result;
 
-	result = DeleteTimerQueueEx(timer_queue, NULL);
-	timer_queue = NULL;
-	assert(result);
+		result = DeleteTimerQueueEx(timer_queue, NULL);
+		timer_queue = NULL;
+		assert(result);
+	}
 
 	for (ChannelTelemVar* ctv : channel_vars) {
 		delete ctv;

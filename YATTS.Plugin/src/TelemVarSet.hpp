@@ -21,7 +21,7 @@ class TelemVarSet {
 	}
 
 	TelemVar* try_get(const char* name) {
-		std::set<TelemVar*, TelemVarPtrCmp>::iterator result = config_vars_set.find(name);
+		auto result = config_vars_set.find(name);
 		return result != config_vars_set.end() ? *result : nullptr;
 	}
 

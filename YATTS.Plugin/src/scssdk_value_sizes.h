@@ -1,5 +1,4 @@
 #pragma once
-
 #include "pch.h"
 #include "scs_sdk_1_11/include/scssdk_value.h"
 
