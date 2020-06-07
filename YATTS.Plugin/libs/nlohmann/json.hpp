@@ -4010,6 +4010,7 @@ class input_buffer_adapter : public input_adapter_protocol
         if (JSON_HEDLEY_LIKELY(cursor < limit))
         {
             assert(cursor != nullptr and limit != nullptr);
+            #pragma warning(suppress: 6011)
             return std::char_traits<char>::to_int_type(*(cursor++));
         }
 
@@ -7255,6 +7256,7 @@ class lexer
     {
         const auto loc = localeconv();
         assert(loc != nullptr);
+        #pragma warning(suppress: 6011)
         return (loc->decimal_point == nullptr) ? '.' : *(loc->decimal_point);
     }
 
@@ -9395,6 +9397,7 @@ class iter_impl
 
         switch (m_object->m_type)
         {
+            #pragma warning(suppress: 6011)
             case value_t::object:
             {
                 m_it.object_iterator = typename object_t::iterator();
@@ -9481,6 +9484,7 @@ class iter_impl
 
         switch (m_object->m_type)
         {
+            #pragma warning(suppress: 6011)
             case value_t::object:
             {
                 m_it.object_iterator = m_object->m_value.object->begin();
@@ -9518,6 +9522,7 @@ class iter_impl
 
         switch (m_object->m_type)
         {
+            #pragma warning(suppress: 6011)
             case value_t::object:
             {
                 m_it.object_iterator = m_object->m_value.object->end();
@@ -9586,6 +9591,7 @@ class iter_impl
 
         switch (m_object->m_type)
         {
+            #pragma warning(suppress: 6011)
             case value_t::object:
             {
                 assert(m_it.object_iterator != m_object->m_value.object->end());
@@ -9631,6 +9637,7 @@ class iter_impl
 
         switch (m_object->m_type)
         {
+            #pragma warning(suppress: 6011)
             case value_t::object:
             {
                 std::advance(m_it.object_iterator, 1);
@@ -9712,6 +9719,7 @@ class iter_impl
 
         switch (m_object->m_type)
         {
+            #pragma warning(suppress: 6011)
             case value_t::object:
                 return (m_it.object_iterator == other.m_it.object_iterator);
 
@@ -13639,10 +13647,12 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
         // digits[000]
         // len <= max_exp + 2
 
+        #pragma warning(suppress: 26451)
         std::memset(buf + k, '0', static_cast<size_t>(n - k));
         // Make it look like a floating-point number (#362, #378)
         buf[n + 0] = '.';
         buf[n + 1] = '0';
+        #pragma warning(suppress: 26451)
         return buf + (n + 2);
     }
 
@@ -13653,8 +13663,10 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
 
         assert(k > n);
 
+        #pragma warning(suppress: 26451)
         std::memmove(buf + (n + 1), buf + n, static_cast<size_t>(k - n));
         buf[n] = '.';
+        #pragma warning(suppress: 26451)
         return buf + (k + 1);
     }
 
@@ -13663,10 +13675,12 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
         // 0.[000]digits
         // len <= 2 + (-min_exp - 1) + max_digits10
 
+        #pragma warning(suppress: 26451)
         std::memmove(buf + (2 + -n), buf, static_cast<size_t>(k));
         buf[0] = '0';
         buf[1] = '.';
         std::memset(buf + 2, '0', static_cast<size_t>(-n));
+        #pragma warning(suppress: 26451)
         return buf + (2 + (-n) + k);
     }
 
@@ -13682,8 +13696,10 @@ inline char* format_buffer(char* buf, int len, int decimal_exponent,
         // d.igitsE+123
         // len <= max_digits10 + 1 + 5
 
+        #pragma warning(suppress: 26451)
         std::memmove(buf + 2, buf + 1, static_cast<size_t>(k - 1));
         buf[1] = '.';
+        #pragma warning(suppress: 26451)
         buf += 1 + k;
     }
 
@@ -14552,6 +14568,7 @@ class serializer
                 ? (byte & 0x3fu) | (codep << 6u)
                 : (0xFFu >> type) & (byte);
 
+        #pragma warning(suppress: 26451)
         state = utf8d[256u + state * 16u + type];
         return state;
     }
