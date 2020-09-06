@@ -1,6 +1,6 @@
 #pragma once
 #include "pch.h"
-#include "scs_sdk_1_11/include/scssdk_value.h"
+#include "scs_sdk_1_12/include/scssdk_value.h"
 
 //reflects sizes of types from scssdk_value.h
 const size_t scssdk_value_sizes[] = {

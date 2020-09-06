@@ -20,11 +20,11 @@
 #include <stdarg.h>
 
 // SDK
-#include "scs_sdk_1_11/include/scssdk_telemetry.h"
-#include "scs_sdk_1_11/include/eurotrucks2/scssdk_eut2.h"
-#include "scs_sdk_1_11/include/eurotrucks2/scssdk_telemetry_eut2.h"
-#include "scs_sdk_1_11/include/amtrucks/scssdk_ats.h"
-#include "scs_sdk_1_11/include/amtrucks/scssdk_telemetry_ats.h"
+#include "scs_sdk_1_12/include/scssdk_telemetry.h"
+#include "scs_sdk_1_12/include/eurotrucks2/scssdk_eut2.h"
+#include "scs_sdk_1_12/include/eurotrucks2/scssdk_telemetry_eut2.h"
+#include "scs_sdk_1_12/include/amtrucks/scssdk_ats.h"
+#include "scs_sdk_1_12/include/amtrucks/scssdk_telemetry_ats.h"
 
 // JSON for Modern C++
 #include "nlohmann/json.hpp"
