@@ -5,13 +5,14 @@
 #include <set>
 #include <map>
 #include <functional>
+#include <memory>
 
 scs_log_t game_log = nullptr;
 HANDLE timer_queue = NULL;
 
-std::vector<ChannelTelemVar*> channel_vars;
-std::set<TelemVarSet*, TelemVarSetPtrCmp> config_vars;
-std::set<TelemVarSet*, TelemVarSetPtrCmp> event_vars;
+std::vector<std::shared_ptr<ChannelTelemVar>> channel_vars;
+std::set<std::shared_ptr<TelemVarSet>, TelemVarSet::shared_ptrCmp> config_vars;
+std::set<std::shared_ptr<TelemVarSet>, TelemVarSet::shared_ptrCmp> event_vars;
 
 std::map<std::string, std::map<std::string, scs_u32_t, std::less<>>, std::less<>> dynamic_count_vars = {
 	{SCS_TELEMETRY_CONFIG_hshifter, {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_selector_count, 0}}},
@@ -51,28 +52,28 @@ void log_line(const scs_log_type_t type, const char* const text, ...) {
 VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
 	std::vector<char> bytebuffer;
 
-	TelemVarSet* truck_set = *config_vars.find(SCS_TELEMETRY_CONFIG_truck);
-	TelemVarSet* trailer_set = *config_vars.find(SCS_TELEMETRY_CONFIG_trailer);
-	TelemVarSet* player_fined_set = *event_vars.find(SCS_TELEMETRY_GAMEPLAY_EVENT_player_fined);
+	std::shared_ptr<TelemVarSet> truck_set = *config_vars.find(SCS_TELEMETRY_CONFIG_truck);
+	std::shared_ptr<TelemVarSet> trailer_set = *config_vars.find(SCS_TELEMETRY_CONFIG_trailer);
+	std::shared_ptr<TelemVarSet> player_fined_set = *event_vars.find(SCS_TELEMETRY_GAMEPLAY_EVENT_player_fined);
 
-	bool lblinker = *reinterpret_cast<bool*>(channel_vars[0]->get_val(SCS_U32_NIL));
-	bool rblinker = *reinterpret_cast<bool*>(channel_vars[1]->get_val(SCS_U32_NIL));
-	float speed = *reinterpret_cast<float*>(channel_vars[2]->get_val(SCS_U32_NIL)) * 3.6f;
+	bool lblinker = *reinterpret_cast<const bool*>(channel_vars[0]->get_val(SCS_U32_NIL));
+	bool rblinker = *reinterpret_cast<const bool*>(channel_vars[1]->get_val(SCS_U32_NIL));
+	float speed = *reinterpret_cast<const float*>(channel_vars[2]->get_val(SCS_U32_NIL)) * 3.6f;
 	log_line(SCS_LOG_TYPE_message, "channels - lblinker: %s, rblinker: %s, speed: %f",
 			 (lblinker ? "on" : "off"),
 			 (rblinker ? "on" : "off"),
 			 speed);
 
-	char* truck_id = reinterpret_cast<char*>((*truck_set)[0]->get_val(SCS_U32_NIL));
-	char* license_plate = reinterpret_cast<char*>((*truck_set)[1]->get_val(SCS_U32_NIL));
+	const char* truck_id = reinterpret_cast<const char*>((*truck_set)[0]->get_val(SCS_U32_NIL));
+	const char* license_plate = reinterpret_cast<const char*>((*truck_set)[1]->get_val(SCS_U32_NIL));
 	log_line(SCS_LOG_TYPE_message, "truck_cfg - %s, %s", truck_id, license_plate);
 
-	scs_u32_t wheel_count = *reinterpret_cast<scs_u32_t*>((*trailer_set)[0]->get_val(SCS_U32_NIL));
-	char* trailer_id = reinterpret_cast<char*>((*trailer_set)[1]->get_val(SCS_U32_NIL));
+	scs_u32_t wheel_count = *reinterpret_cast<const scs_u32_t*>((*trailer_set)[0]->get_val(SCS_U32_NIL));
+	const char* trailer_id = reinterpret_cast<const char*>((*trailer_set)[1]->get_val(SCS_U32_NIL));
 	log_line(SCS_LOG_TYPE_message, "trailer_cfg - %d, %s", wheel_count, trailer_id);
 
-	char* fine_offence = reinterpret_cast<char*>((*player_fined_set)[0]->get_val(SCS_U32_NIL));
-	scs_s64_t fine_amount = *reinterpret_cast<scs_s64_t*>((*player_fined_set)[1]->get_val(SCS_U32_NIL));
+	const char* fine_offence = reinterpret_cast<const char*>((*player_fined_set)[0]->get_val(SCS_U32_NIL));
+	scs_s64_t fine_amount = *reinterpret_cast<const scs_s64_t*>((*player_fined_set)[1]->get_val(SCS_U32_NIL));
 	log_line(SCS_LOG_TYPE_message, "fine - %s, %d", fine_offence, fine_amount);
 }
 
@@ -101,7 +102,7 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
 	auto set_search = config_vars.find(config_info->id);
 
 	if (set_search != config_vars.end()) {
-		TelemVarSet* set = *set_search;
+		std::shared_ptr<TelemVarSet> set = *set_search;
 		set->update_set(config_info->attributes);
 	}
 }
@@ -115,7 +116,7 @@ SCSAPI_VOID telemetry_gameplay_event(const scs_event_t event, const void* const 
 	auto set_search = event_vars.find(gp_event_info->id);
 
 	if (set_search != event_vars.end()) {
-		TelemVarSet* set = *set_search;
+		std::shared_ptr<TelemVarSet> set = *set_search;
 		set->update_set(gp_event_info->attributes);
 	}
 }
@@ -159,31 +160,31 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 		return SCS_RESULT_generic_error;
 	}
 	//////////////////////////////////////////////////////////////////////
-	TelemVarSet* truck_set = new TelemVarSet(SCS_TELEMETRY_CONFIG_truck);
-	truck_set->insert(new StringTelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_id));
-	truck_set->insert(new StringTelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_license_plate));
+	std::shared_ptr<TelemVarSet> truck_set = std::make_shared<TelemVarSet>(SCS_TELEMETRY_CONFIG_truck);
+	truck_set->insert(std::make_shared<StringTelemVar>(SCS_TELEMETRY_CONFIG_ATTRIBUTE_id));
+	truck_set->insert(std::make_shared<StringTelemVar>(SCS_TELEMETRY_CONFIG_ATTRIBUTE_license_plate));
 	config_vars.insert(truck_set);
 
-	TelemVarSet* trailer_set = new TelemVarSet(SCS_TELEMETRY_CONFIG_trailer);
-	trailer_set->insert(new ScalarTelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, SCS_VALUE_TYPE_u32));
-	trailer_set->insert(new StringTelemVar(SCS_TELEMETRY_CONFIG_ATTRIBUTE_id));
+	std::shared_ptr<TelemVarSet> trailer_set = std::make_shared<TelemVarSet>(SCS_TELEMETRY_CONFIG_trailer);
+	trailer_set->insert(std::make_shared<ScalarTelemVar>(SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, SCS_VALUE_TYPE_u32));
+	trailer_set->insert(std::make_shared<StringTelemVar>(SCS_TELEMETRY_CONFIG_ATTRIBUTE_id));
 	config_vars.insert(trailer_set);
 
-	TelemVarSet* player_fined_set = new TelemVarSet(SCS_TELEMETRY_GAMEPLAY_EVENT_player_fined);
-	player_fined_set->insert(new StringTelemVar(SCS_TELEMETRY_GAMEPLAY_EVENT_ATTRIBUTE_fine_offence));
-	player_fined_set->insert(new ScalarTelemVar(SCS_TELEMETRY_GAMEPLAY_EVENT_ATTRIBUTE_fine_amount, SCS_VALUE_TYPE_s64));
+	std::shared_ptr<TelemVarSet> player_fined_set = std::make_shared<TelemVarSet>(SCS_TELEMETRY_GAMEPLAY_EVENT_player_fined);
+	player_fined_set->insert(std::make_shared<StringTelemVar>(SCS_TELEMETRY_GAMEPLAY_EVENT_ATTRIBUTE_fine_offence));
+	player_fined_set->insert(std::make_shared<ScalarTelemVar>(SCS_TELEMETRY_GAMEPLAY_EVENT_ATTRIBUTE_fine_amount, SCS_VALUE_TYPE_s64));
 	event_vars.insert(player_fined_set);
 
 	//////////////////////////////////////////////////////////////////////
 	ChannelTelemVar::reg_chan = version_params->register_for_channel;
 	ChannelTelemVar::unreg_chan = version_params->unregister_from_channel;
 
-	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_lblinker, SCS_VALUE_TYPE_bool));
-	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_rblinker, SCS_VALUE_TYPE_bool));
-	channel_vars.push_back(new ChannelTelemVar(SCS_TELEMETRY_TRUCK_CHANNEL_speed, SCS_VALUE_TYPE_float));
+	channel_vars.emplace_back(std::make_unique<ChannelTelemVar>(SCS_TELEMETRY_TRUCK_CHANNEL_lblinker, SCS_VALUE_TYPE_bool));
+	channel_vars.emplace_back(std::make_unique<ChannelTelemVar>(SCS_TELEMETRY_TRUCK_CHANNEL_rblinker, SCS_VALUE_TYPE_bool));
+	channel_vars.emplace_back(std::make_unique<ChannelTelemVar>(SCS_TELEMETRY_TRUCK_CHANNEL_speed, SCS_VALUE_TYPE_float));
 
-	for (ChannelTelemVar* ctv : channel_vars) {
-		ctv->adjust_channels();
+	for (const std::shared_ptr<ChannelTelemVar>& ctv : channel_vars) {
+		ctv->reg_callbacks();
 	}
 	//////////////////////////////////////////////////////////////////////
 	timer_queue = CreateTimerQueue();
@@ -214,19 +215,13 @@ SCSAPI_VOID scs_telemetry_shutdown(void) {
 		assert(result);
 	}
 
-	for (ChannelTelemVar* ctv : channel_vars) {
-		delete ctv;
+	//make sure, that we're not leaving any instances of CTV with a callback registered...
+	//it shouldn't happen though - at this point the only valid shared_ptr to them should be in vector below
+	for (const std::shared_ptr<ChannelTelemVar>& ctv : channel_vars) {
+		ctv->unreg_callbacks();
 	}
 	channel_vars.clear();
-
-	for (TelemVarSet* tvs : config_vars) {
-		delete tvs;
-	}
 	config_vars.clear();
-
-	for (TelemVarSet* tvs : event_vars) {
-		delete tvs;
-	}
 	event_vars.clear();
 
 	ChannelTelemVar::reg_chan = nullptr;

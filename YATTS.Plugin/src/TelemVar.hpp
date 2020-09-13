@@ -12,42 +12,46 @@ class TelemVar abstract {
 
 	virtual ~TelemVar() { }
 
+	//ensure that TelemVar isn't moved around the memory - a callback is registered to the object pointing at the address
+	//disabled copy ctor makes it impossible to store the object directly in a container - use dynalloc
 	TelemVar& operator=(TelemVar&) = delete;
 	TelemVar(TelemVar&) = delete;
 
-	virtual size_t write_to_buf(std::vector<char>& buffer) abstract;
+	virtual size_t write_to_buf(std::vector<char>& buffer) const abstract;
 
 	virtual void store_value(scs_value_t value, scs_u32_t index) abstract;
 
-	virtual void* get_val(scs_u32_t index) abstract;
+	//debug-only method
+	virtual const void* get_val(scs_u32_t index) const abstract;
 
 	const std::string name;
 	const scs_value_type_t type;
 	const size_t type_size;
 	const scs_u32_t max_count;
 	scs_u32_t* const dynamic_count;
-};
 
-struct TelemVarPtrCmp {
-	using is_transparent = void;
+	//this should be probably generated using a template to work with a plethora of other ptr types
+	struct shared_ptrCmp {
+		using is_transparent = void;
 
-	bool operator()(TelemVar* const& lhs, const char* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs->name < rhs;
-	}
+		bool operator()(std::shared_ptr<TelemVar> const& lhs, const char* const& rhs) const {
+			if (!lhs) return bool(rhs);
+			if (!rhs) return false;
+			return lhs->name < rhs;
+		}
 
-	bool operator()(const char* const& lhs, TelemVar* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs < rhs->name;
-	}
+		bool operator()(const char* const& lhs, std::shared_ptr<TelemVar> const& rhs) const {
+			if (!lhs) return bool(rhs);
+			if (!rhs) return false;
+			return lhs < rhs->name;
+		}
 
-	bool operator()(TelemVar* const& lhs, TelemVar* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs->name < rhs->name;
-	}
+		bool operator()(std::shared_ptr<TelemVar> const& lhs, std::shared_ptr<TelemVar> const& rhs) const {
+			if (!lhs) return bool(rhs);
+			if (!rhs) return false;
+			return lhs->name < rhs->name;
+		}
+	};
 };
 
 class ScalarTelemVar : public TelemVar {
@@ -58,7 +62,7 @@ class ScalarTelemVar : public TelemVar {
 
 	virtual ~ScalarTelemVar() { }
 
-	virtual size_t write_to_buf(std::vector<char>& buffer) {
+	virtual size_t write_to_buf(std::vector<char>& buffer) const {
 		for (scs_u32_t i = 0; i < storage.size(); i++) {
 			if (dynamic_count && i >= *dynamic_count) {
 				//write zeroes as stored data might be irrelevant
@@ -67,7 +71,7 @@ class ScalarTelemVar : public TelemVar {
 				}
 			}
 			else {
-				char* data = reinterpret_cast<char*>(&storage[i].value_bool.value);
+				const char* data = reinterpret_cast<const char*>(&storage[i].value_bool.value);
 				for (size_t pos = 0; pos < type_size; ++pos) {
 					buffer.push_back(data[pos]);
 				}
@@ -87,7 +91,7 @@ class ScalarTelemVar : public TelemVar {
 		storage[index] = value;
 	}
 	
-	virtual void* get_val(scs_u32_t index) {
+	virtual const void* get_val(scs_u32_t index) const {
 		if (index == SCS_U32_NIL) {
 			index = 0;
 		}
@@ -108,24 +112,17 @@ class ChannelTelemVar : public ScalarTelemVar {
 		ScalarTelemVar(name, type, max_count, dynamic_count) { }
 
 	virtual ~ChannelTelemVar() {
-		if (max_count == SCS_U32_NIL) {
-			unreg_chan(name.c_str(), SCS_U32_NIL, type);
-		}
-		else {
-			while (reg_chan_cnt > 0) {
-				--reg_chan_cnt;
-				unreg_chan(name.c_str(), reg_chan_cnt, type);
-			}
-		}
+		unreg_callbacks();
 	}
 
-	void adjust_channels() {
+	//can be called multiple times to adjust the number of registered channels based on dynamic_count
+	void reg_callbacks() {
 		if (dynamic_count) {
 			while (reg_chan_cnt < *dynamic_count && reg_chan_cnt < max_count) {
 				reg_chan(name.c_str(), reg_chan_cnt, type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
 				++reg_chan_cnt;
 			}
-			while (reg_chan_cnt > *dynamic_count && reg_chan_cnt > 0) {
+			while (reg_chan_cnt > * dynamic_count && reg_chan_cnt > 0) {
 				--reg_chan_cnt;
 				unreg_chan(name.c_str(), reg_chan_cnt, type);
 			}
@@ -144,6 +141,20 @@ class ChannelTelemVar : public ScalarTelemVar {
 			}
 		}
 	}
+
+void unreg_callbacks() {
+	if (reg_chan_cnt != 0) {
+		if (max_count == SCS_U32_NIL) {
+			unreg_chan(name.c_str(), SCS_U32_NIL, type);
+		}
+		else {
+			while (reg_chan_cnt > 0) {
+				--reg_chan_cnt;
+				unreg_chan(name.c_str(), reg_chan_cnt, type);
+			}
+		}
+	}
+}
 
 	static scs_telemetry_register_for_channel_t reg_chan;
 	static scs_telemetry_unregister_from_channel_t unreg_chan;
@@ -176,7 +187,7 @@ class StringTelemVar : public TelemVar {
 
 	virtual ~StringTelemVar() { }
 
-	virtual size_t write_to_buf(std::vector<char>& buffer) {
+	virtual size_t write_to_buf(std::vector<char>& buffer) const {
 		size_t total_written = 0;
 
 		for (scs_u32_t i = 0; i < storage.size(); ++i) {
@@ -227,7 +238,7 @@ class StringTelemVar : public TelemVar {
 		}
 	}
 
-	virtual void* get_val(scs_u32_t index) {
+	virtual const void* get_val(scs_u32_t index) const {
 		if (index == SCS_U32_NIL) {
 			index = 0;
 		}
