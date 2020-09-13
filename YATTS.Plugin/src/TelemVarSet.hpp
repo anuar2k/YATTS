@@ -4,30 +4,29 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <memory>
 
 class TelemVarSet {
 	public:
 
 	TelemVarSet(std::string name) : name(name) { }
 
-	~TelemVarSet() {
-		free_vars();
-	}
+	~TelemVarSet() { }
 
-	void insert(TelemVar* tv) {
+	void insert(std::shared_ptr<TelemVar> tv) {
 		assert(config_vars_set.find(tv) == config_vars_set.end());
 		config_vars_vec.push_back(tv);
 		config_vars_set.insert(tv);
 	}
 
-	TelemVar* try_get(const char* name) {
+	std::shared_ptr<TelemVar> try_get(const char* name) {
 		auto result = config_vars_set.find(name);
-		return result != config_vars_set.end() ? *result : nullptr;
+		return result != config_vars_set.end() ? *result : std::shared_ptr<TelemVar>();
 	}
 
 	void update_set(const scs_named_value_t* attributes) {
 		while (attributes->name) {
-			TelemVar* to_update = try_get(attributes->name);
+			std::shared_ptr<TelemVar> to_update = try_get(attributes->name);
 			if (to_update) {
 				assert(attributes->value.type == to_update->type);
 				to_update->store_value(attributes->value, attributes->index);
@@ -37,7 +36,6 @@ class TelemVarSet {
 	}
 
 	void clear() {
-		free_vars();
 		config_vars_vec.clear();
 		config_vars_set.clear();
 	}
@@ -46,50 +44,45 @@ class TelemVarSet {
 		return config_vars_vec.size();
 	}
 
-	TelemVar* operator[](size_t pos) {
+	const std::shared_ptr<TelemVar>& operator[](size_t pos) const {
 		return config_vars_vec[pos];
 	}
 
-	std::vector<TelemVar*>::const_iterator begin() const {
+	std::vector<std::shared_ptr<TelemVar>>::const_iterator begin() const {
 		return config_vars_vec.cbegin();
 	}
 
-	std::vector<TelemVar*>::const_iterator end() const {
+	std::vector<std::shared_ptr<TelemVar>>::const_iterator end() const {
 		return config_vars_vec.cend();
 	}
 
 	const std::string name;
 
+	//this should be probably generated using a template to work with a plethora of other ptr types
+	struct shared_ptrCmp {
+		using is_transparent = void;
+
+		bool operator()(std::shared_ptr<TelemVarSet> const& lhs, const char* const& rhs) const {
+			if (!lhs) return bool(rhs);
+			if (!rhs) return false;
+			return lhs->name < rhs;
+		}
+
+		bool operator()(const char* const& lhs, std::shared_ptr<TelemVarSet> const& rhs) const {
+			if (!lhs) return bool(rhs);
+			if (!rhs) return false;
+			return lhs < rhs->name;
+		}
+
+		bool operator()(std::shared_ptr<TelemVarSet> const& lhs, std::shared_ptr<TelemVarSet> const& rhs) const {
+			if (!lhs) return bool(rhs);
+			if (!rhs) return false;
+			return lhs->name < rhs->name;
+		}
+	};
+
 	private:
 
-	void free_vars() {
-		for (TelemVar* tv : config_vars_vec) {
-			delete tv;
-		}
-	}
-
-	std::vector<TelemVar*> config_vars_vec;
-	std::set<TelemVar*, TelemVarPtrCmp> config_vars_set;
-};
-
-struct TelemVarSetPtrCmp {
-	using is_transparent = void;
-
-	bool operator()(TelemVarSet* const& lhs, const char* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs->name < rhs;
-	}
-
-	bool operator()(const char* const& lhs, TelemVarSet* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs < rhs->name;
-	}
-
-	bool operator()(TelemVarSet* const& lhs, TelemVarSet* const& rhs) const {
-		if (!lhs) return rhs;
-		if (!rhs) return false;
-		return lhs->name < rhs->name;
-	}
+	std::vector<std::shared_ptr<TelemVar>> config_vars_vec;
+	std::set<std::shared_ptr<TelemVar>, TelemVar::shared_ptrCmp> config_vars_set;
 };
