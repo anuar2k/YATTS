@@ -17,8 +17,11 @@ class TelemVar abstract {
 	TelemVar& operator=(TelemVar&) = delete;
 	TelemVar(TelemVar&) = delete;
 
+	//writes max_count * type_size bytes of stored data to the buffer; string is an exception, obviously
+	//TODO: consider adding an endianness switch (little endian by default)
 	virtual size_t write_to_buf(std::vector<char>& buffer) const abstract;
 
+	//is it legal to call store_value on index that is unexistent in TelemVar's internal storage
 	virtual void store_value(scs_value_t value, scs_u32_t index) abstract;
 
 	//debug-only method
@@ -81,14 +84,15 @@ class ScalarTelemVar : public TelemVar {
 	}
 
 	virtual void store_value(scs_value_t value, scs_u32_t index) {
+		assert(value.type == type);
+
 		if (index == SCS_U32_NIL) {
 			index = 0;
 		}
 
-		assert(value.type == type);
-		assert(index < storage.size());
-
-		storage[index] = value;
+		if (index < storage.size()) {
+			storage[index] = value;
+		}
 	}
 	
 	virtual const void* get_val(scs_u32_t index) const {
@@ -208,33 +212,34 @@ class StringTelemVar : public TelemVar {
 	}
 
 	virtual void store_value(scs_value_t value, scs_u32_t index) {
+		assert(value.type == SCS_VALUE_TYPE_string);
+
 		if (index == SCS_U32_NIL) {
 			index = 0;
 		}
 
-		assert(value.type == SCS_VALUE_TYPE_string);
-		assert(index < storage.size());
+		if (index < storage.size()) {
+			storage[index].clear();
 
-		storage[index].clear();
+			scs_string_t string = value.value_string.value;
 
-		scs_string_t string = value.value_string.value;
+			if (string) {
+				size_t curr_written = 0;
 
-		if (string) {
-			size_t curr_written = 0;
+				do {
+					++curr_written;
+					if (truncate && curr_written == truncate) {
+						storage[index].push_back('\0');
+						break;
+					}
 
-			do {
-				++curr_written;
-				if (truncate && curr_written == truncate) {
-					storage[index].push_back('\0');
-					break;
+					storage[index].push_back(*string);
 				}
-
-				storage[index].push_back(*string);
+				while (*string++);
 			}
-			while (*string++);
-		}
-		else {
-			storage[index].push_back('\0');
+			else {
+				storage[index].push_back('\0');
+			}
 		}
 	}
 
