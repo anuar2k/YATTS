@@ -176,9 +176,9 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir)libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessToFile>true</PreprocessToFile>
-      <PreprocessSuppressLineNumbers>true</PreprocessSuppressLineNumbers>
-      <PreprocessKeepComments>true</PreprocessKeepComments>
+      <PreprocessToFile>false</PreprocessToFile>
+      <PreprocessSuppressLineNumbers>false</PreprocessSuppressLineNumbers>
+      <PreprocessKeepComments>false</PreprocessKeepComments>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -165,8 +165,8 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	}
 	//////////////////////////////////////////////////////////////////////
 	std::shared_ptr<TelemVarSet> truck_set = std::make_shared<TelemVarSet>(SCS_TELEMETRY_CONFIG_truck);
-	truck_set->insert(std::make_shared<StringTelemVar>(SCS_TELEMETRY_CONFIG_ATTRIBUTE_id));
-	truck_set->insert(std::make_shared<StringTelemVar>(SCS_TELEMETRY_CONFIG_ATTRIBUTE_license_plate));
+	truck_set->insert(std::make_shared<StringTelemVar>(SCS_TELEMETRY_CONFIG_ATTRIBUTE_id, 50));
+	truck_set->insert(std::make_shared<StringTelemVar>(SCS_TELEMETRY_CONFIG_ATTRIBUTE_license_plate, 3));
 	config_vars.insert(truck_set);
 
 	std::shared_ptr<TelemVarSet> trailer_set = std::make_shared<TelemVarSet>(SCS_TELEMETRY_CONFIG_trailer);
