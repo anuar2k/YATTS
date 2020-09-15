@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "TelemVar.hpp"
 #include "TelemVarSet.hpp"
+
+// JSON for Modern C++
+#include "nlohmann/json.hpp"
+
 #include <vector>
 #include <set>
 #include <map>

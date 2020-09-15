@@ -3,6 +3,8 @@
 #include "scssdk_value_sizes.h"
 #include <string>
 #include <vector>
+#include <memory>
+#include <iterator>
 
 class TelemVar abstract {
 	public:
@@ -19,7 +21,7 @@ class TelemVar abstract {
 
 	//writes max_count * type_size bytes of stored data to the buffer; string is an exception, obviously
 	//TODO: consider adding an endianness switch (little endian by default)
-	virtual size_t write_to_buf(std::vector<char>& buffer) const abstract;
+	virtual void write_to_buf(std::vector<char>& buffer) const abstract;
 
 	//is it legal to call store_value on index that is unexistent in TelemVar's internal storage
 	virtual void store_value(scs_value_t value, scs_u32_t index) abstract;
@@ -65,8 +67,8 @@ class ScalarTelemVar : public TelemVar {
 
 	virtual ~ScalarTelemVar() { }
 
-	virtual size_t write_to_buf(std::vector<char>& buffer) const {
-		for (scs_u32_t i = 0; i < storage.size(); i++) {
+	virtual void write_to_buf(std::vector<char>& buffer) const {
+		for (scs_u32_t i = 0; i < storage.size(); ++i) {
 			if (dynamic_count && i >= *dynamic_count) {
 				//write zeroes as stored data might be irrelevant
 				for (size_t pos = 0; pos < type_size; ++pos) {
@@ -80,7 +82,6 @@ class ScalarTelemVar : public TelemVar {
 				}
 			}
 		}
-		return type_size * max_count;
 	}
 
 	virtual void store_value(scs_value_t value, scs_u32_t index) {
@@ -126,7 +127,7 @@ class ChannelTelemVar : public ScalarTelemVar {
 				reg_chan(name.c_str(), reg_chan_cnt, type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
 				++reg_chan_cnt;
 			}
-			while (reg_chan_cnt > * dynamic_count && reg_chan_cnt > 0) {
+			while (reg_chan_cnt > *dynamic_count && reg_chan_cnt > 0) {
 				--reg_chan_cnt;
 				unreg_chan(name.c_str(), reg_chan_cnt, type);
 			}
@@ -137,7 +138,7 @@ class ChannelTelemVar : public ScalarTelemVar {
 					reg_chan(name.c_str(), SCS_U32_NIL, type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
 				}
 				else {
-					for (scs_u32_t i = 0; i < max_count; i++) {
+					for (scs_u32_t i = 0; i < max_count; ++i) {
 						reg_chan(name.c_str(), i, type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
 					}
 				}
@@ -181,34 +182,27 @@ SCSAPI_VOID chan_callback(const scs_string_t name, const scs_u32_t index, const 
 class StringTelemVar : public TelemVar {
 	public:
 
-	StringTelemVar(std::string name, size_t truncate = 0, scs_u32_t max_count = SCS_U32_NIL, scs_u32_t* dynamic_count = nullptr) :
-		TelemVar(name, SCS_VALUE_TYPE_string, max_count, dynamic_count), truncate(truncate), storage(max_count == SCS_U32_NIL ? 1 : max_count) {
+	//if truncate is set, all strings will be null-padded to preserve static frame length
+	StringTelemVar(std::string name, size_t truncate_nullpad = 0, scs_u32_t max_count = SCS_U32_NIL, scs_u32_t* dynamic_count = nullptr) :
+		TelemVar(name, SCS_VALUE_TYPE_string, max_count, dynamic_count), truncate_nullpad(truncate_nullpad), storage(max_count == SCS_U32_NIL ? 1 : max_count) {
 		for (std::vector<char>& storage_elem : storage) {
 			//init storage with empty strings
-			storage_elem.push_back('\0');
+			std::fill_n(std::back_inserter(storage_elem), truncate_nullpad ? truncate_nullpad : 1, '\0');
 		}
 	}
 
 	virtual ~StringTelemVar() { }
 
-	virtual size_t write_to_buf(std::vector<char>& buffer) const {
-		size_t total_written = 0;
-
+	virtual void write_to_buf(std::vector<char>& buffer) const {
 		for (scs_u32_t i = 0; i < storage.size(); ++i) {
 			if (dynamic_count && i >= *dynamic_count) {
 				//write empty string as storage contents might be irrelevant
-				buffer.push_back('\0');
-				++total_written;
+				std::fill_n(std::back_inserter(buffer), truncate_nullpad ? truncate_nullpad : 1, '\0');
 			}
 			else {
-				for (char chr : storage[i]) {
-					buffer.push_back(chr);
-					++total_written;
-				}
+				buffer.insert(buffer.end(), storage[i].begin(), storage[i].end());
 			}
 		}
-
-		return total_written;
 	}
 
 	virtual void store_value(scs_value_t value, scs_u32_t index) {
@@ -224,11 +218,12 @@ class StringTelemVar : public TelemVar {
 			scs_string_t string = value.value_string.value;
 
 			if (string) {
-				size_t curr_written = 0;
+				size_t written = 0;
 
+				//copy the string, if truncate_nullpad: at most truncate_nullpad bytes (incl nullchar)
 				do {
-					++curr_written;
-					if (truncate && curr_written == truncate) {
+					++written;
+					if (truncate_nullpad && written == truncate_nullpad) {
 						storage[index].push_back('\0');
 						break;
 					}
@@ -236,9 +231,14 @@ class StringTelemVar : public TelemVar {
 					storage[index].push_back(*string);
 				}
 				while (*string++);
+
+				//if truncate_nullpad, fill remaining space with nullchars
+				if (truncate_nullpad && written < truncate_nullpad) {
+					std::fill_n(std::back_inserter(storage[index]), truncate_nullpad - written, '\0');
+				}
 			}
 			else {
-				storage[index].push_back('\0');
+				std::fill_n(std::back_inserter(storage[index]), truncate_nullpad ? truncate_nullpad : 1, '\0');
 			}
 		}
 	}
@@ -251,7 +251,7 @@ class StringTelemVar : public TelemVar {
 		return &storage[index][0];
 	}
 
-	const size_t truncate;
+	const size_t truncate_nullpad;
 
 	protected:
 	std::vector<std::vector<char>> storage;
