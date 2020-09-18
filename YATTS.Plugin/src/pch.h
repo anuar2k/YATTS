@@ -25,3 +25,7 @@
 #include "scs_sdk_1_12/include/eurotrucks2/scssdk_telemetry_eut2.h"
 #include "scs_sdk_1_12/include/amtrucks/scssdk_ats.h"
 #include "scs_sdk_1_12/include/amtrucks/scssdk_telemetry_ats.h"
+
+// JSON for Modern C++
+#include "nlohmann/json.hpp"
+using json = nlohmann::json;
