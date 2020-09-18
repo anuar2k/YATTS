@@ -25,7 +25,8 @@
       "vars": [
         {
           "name": "id",
-          "type": 12
+          "type": 12,
+          "truncate_nullpad": 4
         },
         {
           "name": "wheels.count",
@@ -38,7 +39,8 @@
       "vars": [
         {
           "name": "chain.type",
-          "type": 12
+          "type": 12,
+          "truncate_nullpad": 10
         }
       ]
     }
@@ -49,7 +51,8 @@
       "vars": [
         {
           "name": "fine.offence",
-          "type": 12
+          "type": 12,
+          "truncate_nullpad": 20
         },
         {
           "name": "fine.amount",

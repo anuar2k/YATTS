@@ -12,5 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="src\main.def" />
+    <None Include="src\sample_YATTS.Config.json" />
   </ItemGroup>
 </Project>

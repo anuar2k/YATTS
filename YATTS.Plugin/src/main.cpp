@@ -18,7 +18,8 @@
 
 #define YATTS_VERSION YATTS_MAKE_VERSION(YATTS_VERSION_MAJOR, YATTS_VERSION_MINOR, YATTS_VERSION_PATCH)
 
-#define CONFIG_FILENAME "YATTS.Config.json"
+//path is relative to the game's executable
+#define CONFIG_PATH "plugins\\YATTS.Config.json"
 
 scs_log_t game_log = nullptr;
 HANDLE timer_queue = NULL;
@@ -89,6 +90,11 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
 		}
 	}
 
+	//refresh dynamic_count ChannelTelemVars
+	for (const std::shared_ptr<ChannelTelemVar>& ctv : channel_vars) {
+		ctv->reg_callbacks();
+	}
+
 	#pragma warning(suppress: 6011)
 	auto set_search = config_vars.find(config_info->id);
 
@@ -132,10 +138,10 @@ scs_u32_t* get_dynamic_count_ptr(std::string& dynamic_count_set_name, std::strin
 //parses the config file into channel_vars, config_vars, event_vars
 bool load_config() {
 	try {
-		std::ifstream config_file(CONFIG_FILENAME);
+		std::ifstream config_file(CONFIG_PATH);
 
 		if (config_file.fail()) {
-			throw std::exception("file " CONFIG_FILENAME " does not exist");
+			throw std::exception("config file not found - it must be accessible under " CONFIG_PATH);
 		}
 
 		const json config = json::parse(config_file);
@@ -228,7 +234,7 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	game_log = version_params->common.log;
 
 	log_line(SCS_LOG_TYPE_message, "YATTS: Initializing YATTS v" YATTS_VERSION);
-	log_line(SCS_LOG_TYPE_message, "YATTS: Game '%s', version %u.%u", version_params->common.game_id, SCS_GET_MAJOR_VERSION(version_params->common.game_version), SCS_GET_MINOR_VERSION(version_params->common.game_version));
+	log_line(SCS_LOG_TYPE_message, "YATTS: Game '%s', SDK version %u.%u", version_params->common.game_id, SCS_GET_MAJOR_VERSION(version_params->common.game_version), SCS_GET_MINOR_VERSION(version_params->common.game_version));
 
 	//we support all versions since adding multiple trailers to the game
 	//added/missing channel is not considered as a breaking change
@@ -293,7 +299,7 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	}
 
 	//we're finished here------------------------------------------------------
-	log_line(SCS_LOG_TYPE_message, "YATTS: Initialized");
+	log_line(SCS_LOG_TYPE_message, "YATTS: Initialization finished");
 	return SCS_RESULT_ok;
 }
 
