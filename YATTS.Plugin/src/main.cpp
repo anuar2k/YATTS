@@ -65,31 +65,7 @@ void log_line(const scs_log_type_t type, const char* const text, ...) {
 
 //debug function
 VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
-	std::vector<char> bytebuffer;
 
-	std::shared_ptr<TelemVarSet> truck_set = *config_vars.find(SCS_TELEMETRY_CONFIG_truck);
-	std::shared_ptr<TelemVarSet> trailer_set = *config_vars.find(SCS_TELEMETRY_CONFIG_trailer);
-	std::shared_ptr<TelemVarSet> player_fined_set = *event_vars.find(SCS_TELEMETRY_GAMEPLAY_EVENT_player_fined);
-
-	bool lblinker = *reinterpret_cast<const bool*>(channel_vars[0]->get_val(SCS_U32_NIL));
-	bool rblinker = *reinterpret_cast<const bool*>(channel_vars[1]->get_val(SCS_U32_NIL));
-	float speed = *reinterpret_cast<const float*>(channel_vars[2]->get_val(SCS_U32_NIL)) * 3.6f;
-	log_line(SCS_LOG_TYPE_message, "channels - lblinker: %s, rblinker: %s, speed: %f",
-			 (lblinker ? "on" : "off"),
-			 (rblinker ? "on" : "off"),
-			 speed);
-
-	const char* truck_id = reinterpret_cast<const char*>((*truck_set)[0]->get_val(SCS_U32_NIL));
-	const char* license_plate = reinterpret_cast<const char*>((*truck_set)[1]->get_val(SCS_U32_NIL));
-	log_line(SCS_LOG_TYPE_message, "truck_cfg - %s, %s", truck_id, license_plate);
-
-	scs_u32_t wheel_count = *reinterpret_cast<const scs_u32_t*>((*trailer_set)[0]->get_val(SCS_U32_NIL));
-	const char* trailer_id = reinterpret_cast<const char*>((*trailer_set)[1]->get_val(SCS_U32_NIL));
-	log_line(SCS_LOG_TYPE_message, "trailer_cfg - %d, %s", wheel_count, trailer_id);
-
-	const char* fine_offence = reinterpret_cast<const char*>((*player_fined_set)[0]->get_val(SCS_U32_NIL));
-	scs_s64_t fine_amount = *reinterpret_cast<const scs_s64_t*>((*player_fined_set)[1]->get_val(SCS_U32_NIL));
-	log_line(SCS_LOG_TYPE_message, "fine - %s, %d", fine_offence, fine_amount);
 }
 
 SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const event_info, const scs_context_t context) {
@@ -180,9 +156,10 @@ bool load_config() {
 			scs_u32_t max_count = ctv_desc.value("max_count", SCS_U32_NIL);
 			scs_u32_t* dynamic_count = nullptr;
 
-			if (max_count != SCS_U32_NIL) {
-				std::string dynamic_count_set_name = ctv_desc.value("dynamic_count_set_name", std::string());
-				std::string dynamic_count_var_name = ctv_desc.value("dynamic_count_var_name", std::string());
+			if (max_count != SCS_U32_NIL && ctv_desc.contains("dynamic_count")) {
+				const json& dynamic_count_desc = ctv_desc.at("dynamic_count");
+				std::string dynamic_count_set_name = dynamic_count_desc.value("set_name", std::string());
+				std::string dynamic_count_var_name = dynamic_count_desc.value("var_name", std::string());
 				dynamic_count = get_dynamic_count_ptr(dynamic_count_set_name, dynamic_count_var_name);
 			}
 
@@ -204,9 +181,10 @@ bool load_config() {
 					scs_u32_t max_count = tv_desc.value("max_count", SCS_U32_NIL);
 					scs_u32_t* dynamic_count = nullptr;
 
-					if (max_count != SCS_U32_NIL) {
-						std::string dynamic_count_set_name = tv_desc.value("dynamic_count_set_name", std::string());
-						std::string dynamic_count_var_name = tv_desc.value("dynamic_count_var_name", std::string());
+					if (max_count != SCS_U32_NIL && tv_desc.contains("dynamic_count")) {
+						const json& dynamic_count_desc = tv_desc.at("dynamic_count");
+						std::string dynamic_count_set_name = dynamic_count_desc.value("set_name", std::string());
+						std::string dynamic_count_var_name = dynamic_count_desc.value("var_name", std::string());
 						dynamic_count = get_dynamic_count_ptr(dynamic_count_set_name, dynamic_count_var_name);
 					}
 

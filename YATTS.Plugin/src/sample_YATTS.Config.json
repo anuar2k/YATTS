@@ -1,0 +1,61 @@
+{
+  "version": {
+    "major": 0,
+    "minor": 1,
+    "patch": 0
+  },
+  "channel_vars": [
+    {
+      "name": "truck.wheel.on_ground",
+      "type": 1,
+      "max_count": 6,
+      "dynamic_count": {
+        "set_name": "truck",
+        "var_name": "wheels.count"
+      }
+    },
+    {
+      "name": "truck.speed",
+      "type": 5
+    }
+  ],
+  "config_vars": [
+    {
+      "name": "truck",
+      "vars": [
+        {
+          "name": "id",
+          "type": 12
+        },
+        {
+          "name": "wheels.count",
+          "type": 3
+        }
+      ]
+    },
+    {
+      "name": "trailer",
+      "vars": [
+        {
+          "name": "chain.type",
+          "type": 12
+        }
+      ]
+    }
+  ],
+  "event_vars": [
+    {
+      "name": "player.fined",
+      "vars": [
+        {
+          "name": "fine.offence",
+          "type": 12
+        },
+        {
+          "name": "fine.amount",
+          "type": 5
+        }
+      ]
+    }
+  ]
+}
