@@ -66,7 +66,20 @@ void log_line(const scs_log_type_t type, const char* const text, ...) {
 
 //debug function
 VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
+	bool on_ground[6];
 
+	for (size_t i = 0; i < 6; ++i) {
+		on_ground[i] = *reinterpret_cast<const bool*>(channel_vars[0]->get_val(i));
+	}
+
+	log_line(SCS_LOG_TYPE_message, "%s: %d %d %d %d %d %d",
+			 channel_vars[0]->name.c_str(),
+			 on_ground[0],
+			 on_ground[1],
+			 on_ground[2],
+			 on_ground[3],
+			 on_ground[4],
+			 on_ground[5]);
 }
 
 SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const event_info, const scs_context_t context) {
