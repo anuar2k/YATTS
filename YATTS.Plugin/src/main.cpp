@@ -68,7 +68,7 @@ void log_line(const scs_log_type_t type, const char* const text, ...) {
 VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
 	bool on_ground[6];
 
-	for (size_t i = 0; i < 6; ++i) {
+	for (scs_u32_t i = 0; i < 6; ++i) {
 		on_ground[i] = *reinterpret_cast<const bool*>(channel_vars[0]->get_val(i));
 	}
 
@@ -166,23 +166,31 @@ bool load_config() {
 		}
 
 		//loading ChannelTelemVars---------------------------------------------
-		const json& ctv_list = config.at("channel_vars");
-		var_count += ctv_list.size();
+		for (const json& ctv_set_desc : config.at("channel_vars")) {
+			std::string ctv_set_name = ctv_set_desc.at("name");
 
-		for (const json& ctv_desc : ctv_list) {
-			std::string name = ctv_desc.at("name").get<std::string>();
-			scs_value_type_t type = ctv_desc.at("type").get<scs_value_type_t>();
-			scs_u32_t max_count = ctv_desc.value("max_count", SCS_U32_NIL);
-			scs_u32_t* dynamic_count = nullptr;
+			const json& ctv_list = ctv_set_desc.at("vars");
+			var_count += ctv_list.size();
 
-			if (max_count != SCS_U32_NIL && ctv_desc.contains("dynamic_count")) {
-				const json& dynamic_count_desc = ctv_desc.at("dynamic_count");
-				std::string dynamic_count_set_name = dynamic_count_desc.value("set_name", std::string());
-				std::string dynamic_count_var_name = dynamic_count_desc.value("var_name", std::string());
-				dynamic_count = get_dynamic_count_ptr(dynamic_count_set_name, dynamic_count_var_name);
+			for (const json& ctv_desc : ctv_list) {
+				std::string name = ctv_set_name + "." + ctv_desc.at("name").get<std::string>();
+				scs_value_type_t type = ctv_desc.at("type").get<scs_value_type_t>();
+				scs_u32_t max_count = ctv_desc.value("max_count", SCS_U32_NIL);
+				scs_u32_t* dynamic_count = nullptr;
+
+				if (max_count != SCS_U32_NIL && ctv_desc.contains("dynamic_count")) {
+					const json& dynamic_count_desc = ctv_desc.at("dynamic_count");
+					std::string dynamic_count_set_name = dynamic_count_desc.value("set_name", std::string());
+					std::string dynamic_count_var_name = dynamic_count_desc.value("var_name", std::string());
+					dynamic_count = get_dynamic_count_ptr(dynamic_count_set_name, dynamic_count_var_name);
+				}
+
+				if (type == SCS_VALUE_TYPE_string) {
+					throw std::exception("channel string variables are not supported");
+				}
+
+				channel_vars.emplace_back(std::make_shared<ChannelTelemVar>(name, type, max_count, dynamic_count));
 			}
-
-			channel_vars.emplace_back(std::make_shared<ChannelTelemVar>(name, type, max_count, dynamic_count));
 		}
 
 		//loading config and event TelemVars-----------------------------------
@@ -211,7 +219,7 @@ bool load_config() {
 						size_t truncate_nullpad = tv_desc.at("truncate_nullpad").get<size_t>();
 
 						if (truncate_nullpad == 0) {
-							throw new std::exception("truncate_nullpad parameter must not be 0");
+							throw std::exception("truncate_nullpad parameter must not be 0");
 						}
 
 						tvs->insert(std::make_shared<StringTelemVar>(name, truncate_nullpad, max_count, dynamic_count));

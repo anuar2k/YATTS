@@ -6,17 +6,22 @@
   },
   "channel_vars": [
     {
-      "name": "truck.wheel.on_ground",
-      "type": 1,
-      "max_count": 6,
-      "dynamic_count": {
-        "set_name": "truck",
-        "var_name": "wheels.count"
-      }
-    },
-    {
-      "name": "truck.speed",
-      "type": 5
+      "name": "truck",
+      "vars": [
+        {
+          "name": "wheel.on_ground",
+          "type": 1,
+          "max_count": 6,
+          "dynamic_count": {
+            "set_name": "truck",
+            "var_name": "wheels.count"
+          }
+        },
+        {
+          "name": "speed",
+          "type": 5
+        }
+      ]
     }
   ],
   "config_vars": [
