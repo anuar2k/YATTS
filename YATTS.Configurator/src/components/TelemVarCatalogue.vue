@@ -1,23 +1,29 @@
 <template>
-  <div class="row mb-2" v-for="category in state" v-bind:key="category.def.id">
-    <div class="col card bg-1">
-      <div class="row">
+  <div class="row disable-selection card bg-3 mb-2" v-for="category in state" v-bind:key="category.def.id">
+    <div class="col">
+      <div class="row" v-on:click="$emit('toggle-show', category)">
         <div class="col">
-          Category: {{ category.def.name }}, desc: {{ category.def.description }}
+          <span class="category-arrow"><RotatingArrow v-bind:rotated="category.show" /></span>
+          <span class="category-name">{{ category.def.name }}</span>
+          <span class="category-desc">{{ category.def.description }}</span>
         </div>
       </div>
-      <div class="row">
+      <div class="row indent-groups" v-show="category.show">
         <div class="col">
           <div class="row" v-for="group in category.groups" v-bind:key="group.def.id">
-            <div class="col card m-2 bg-2">
-              <div class="row">
+            <div class="col">
+              <div class="row" v-on:click="$emit('toggle-show', group)">
                 <div class="col">
-                  Group: {{ group.def.name }}
+                  <RotatingArrow v-bind:rotated="group.show" />&nbsp;{{ group.def.name }}
                 </div>
               </div>
-              <div class="row" v-for="variable in group.variables" v-bind:key="variable.def.id">
-                <div class="col card m-2 bg-3">
-                  Variable: {{ variable.def.id }}
+              <div class="row indent-variables" v-show="group.show">
+                <div class="col">
+                  <div class="row" v-for="variable in group.variables" v-bind:key="variable.def.id">
+                    <div class="col" v-on:click="$emit('toggle-selected', variable)">
+                      {{ variable.def.id }}, selected: {{ variable.selected }}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -29,24 +35,47 @@
 </template>
 
 <script>
+import RotatingArrow from './RotatingArrow';
+
 export default {
   name: 'TelemVarCatalogue',
-  props: ['state']
+  props: ['state'],
+  emits: ['toggle-show', 'toggle-selected'],
+  mounted() {
+    console.log('siemka');
+  },
+  components: {
+    RotatingArrow
+  }
 }
 </script>
 
 <style lang="scss" scoped>
-  $base-color: #007bff;
 
-  .bg-1 {
-    background-color: lighten($base-color, 10%);
+  .indent-groups {
+    padding-left: 1.2rem;
   }
 
-  .bg-2 {
-    background-color: lighten($base-color, 20%);
+  .indent-variables {
+    padding-left: 2rem;
   }
 
-  .bg-3 {
-    background-color: lighten($base-color, 30%);
+  .disable-selection {
+    user-select: none;
+  }
+
+  .category-arrow {
+    font-size: medium;
+    margin-right: .5rem;
+    vertical-align: 12%;
+  }
+
+  .category-name {
+    font-size: x-large;
+    margin-right: .5rem;
+  }
+
+  .category-desc {
+    font-size: medium;
   }
 </style>

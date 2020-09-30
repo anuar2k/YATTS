@@ -10,8 +10,9 @@
   "dependencies": {
     "3": "^2.1.0",
     "-": "0.0.1",
-    "bootstrap": "^4.5.2",
+    "@fortawesome/fontawesome-free": "^5.15.0",
     "core-js": "^3.6.5",
+    "fontsource-roboto": "^3.0.3",
     "vue": "^3.0.0-0"
   },
   "devDependencies": {

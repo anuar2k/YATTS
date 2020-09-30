@@ -2,7 +2,7 @@ export default [
   {
     id: 'channel',
     name: 'Channel variables',
-    description: 'These variables will be sent every tick',
+    description: 'streamed continuously',
     groups: [
       {
         id: 'truck',
@@ -37,7 +37,7 @@ export default [
   {
     id: 'config',
     name: 'Config variables',
-    description: 'These variables will be sent only upon change',
+    description: 'sent only, when a group\'s variable changes',
     groups: [
       {
         id: 'truck',
@@ -54,5 +54,11 @@ export default [
         ]
       }
     ]
+  },
+  {
+    id: 'event',
+    name: 'Event variables',
+    description: 'sent only, when an event occurs',
+    groups: []
   }
 ]
