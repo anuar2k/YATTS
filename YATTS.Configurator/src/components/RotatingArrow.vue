@@ -9,7 +9,7 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
   .rotate-icon {
     transform: rotate(-90deg);
   }
