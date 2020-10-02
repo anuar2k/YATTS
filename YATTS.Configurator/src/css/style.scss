@@ -1,6 +1,6 @@
 @import "~fontsource-roboto/index.css";
 
-$base-color: #ffd000;
+$base-color: #00ccff;
 
 .bg-1 {
   background-color: $base-color;
@@ -12,6 +12,10 @@ $base-color: #ffd000;
 
 .bg-3 {
   background-color: scale-color($base-color, $lightness: 80%);
+}
+
+.bg-grey {
+  background-color: #f4f4f4;
 }
 
 *, ::after, ::before {
@@ -35,6 +39,14 @@ body {
   padding-left: 15px;
   margin-left: auto;
   margin-right: auto;
+}
+
+.p-2 {
+  padding: .5rem;
+}
+
+.margin-between:not(:last-child) {
+  margin-bottom: .5rem;
 }
 
 .row {
@@ -63,5 +75,4 @@ body {
   background-clip: border-box;
   border: 1px solid rgba(0,0,0,.125);
   border-radius: .25rem;
-  margin-bottom: .5rem;
 }
