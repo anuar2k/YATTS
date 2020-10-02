@@ -5,8 +5,8 @@
   <div class="container">
     <div class="row">
       <div class="col">
-        <TelemVarCatalogue 
-          v-bind:state="state" 
+        <TelemVarSelector 
+          v-bind:config="config" 
           v-on:toggle-show="toggleShow"
           v-on:toggle-selected="toggleSelected" 
         />
@@ -19,28 +19,28 @@
 </template>
 
 <script>
-import TelemVarCatalogue from './components/TelemVarCatalogue';
+import TelemVarSelector from '@/components/TelemVarSelector';
 
-import TelemVarDefinitions from './utils/TelemVarDefinitions';
-import { GenerateInitialState } from './utils/TelemVarStateUtil';
+import TelemVarDefinitions from '@/utils/TelemVarDefinitions';
+import { GetInitialConfig } from '@/utils/TelemVarConfigUtil';
 
 export default {
   name: 'App',
-  data() {
-    return {
-      state: GenerateInitialState(TelemVarDefinitions)
-    }
-  },
-  methods: {
-    toggleShow(subtree) {
+  setup() {
+    const config = GetInitialConfig(TelemVarDefinitions);
+
+    const toggleShow = subtree => {
       subtree.show = !subtree.show;
-    },
-    toggleSelected(variable) {
+    }
+
+    const toggleSelected = variable => {
       variable.selected = !variable.selected;
     }
+
+    return { config, toggleShow, toggleSelected }
   },
   components: {
-    TelemVarCatalogue 
+    TelemVarSelector 
   }
 }
 </script>
