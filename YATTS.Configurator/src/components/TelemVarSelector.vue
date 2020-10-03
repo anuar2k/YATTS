@@ -107,7 +107,6 @@ export default {
 
   .group-count {
     font-size: small;
-    margin-right: .06rem;
   }
 
   .group-arrow {

@@ -11,8 +11,8 @@
           v-on:toggle-selected="toggleSelected" 
         />
       </div>
-      <div class="col">
-
+      <div class="col desc">
+        <component v-bind:is="config[0].groups[0].variables[0].value.def.desc" />
       </div>
     </div>
   </div>
