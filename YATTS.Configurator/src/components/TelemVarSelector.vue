@@ -8,9 +8,16 @@
         <div class="col">
           <div class="row" v-on:click="$emit('toggle-show', category.value)">
             <div class="col">
-              <span class="category-arrow"><RotatingArrow v-bind:rotated="category.value.show" /></span>
-              <span class="category-name">{{ category.value.def.name }}</span>
-              <span class="category-desc">{{ category.value.def.description }}</span>
+              <div class="category">
+                <div class="category-left">
+                  <span class="category-arrow"><RotatingArrow v-bind:rotated="category.value.show" /></span>
+                  <span class="category-name">{{ category.value.def.name }}</span>
+                  <span class="category-desc">{{ category.value.def.description }}</span>
+                </div>
+                <div class="category-right">
+                  <span class="category-count">{{ getCategoryVariableCount(category) }}</span>
+                </div>
+              </div>
             </div>
           </div>
           <div class="row indent-groups" v-if="category.value.show">
@@ -19,13 +26,21 @@
                 <div class="col">
                   <div class="row" v-on:click="$emit('toggle-show', group.value)">
                     <div class="col">
-                      <RotatingArrow v-bind:rotated="group.value.show" />&nbsp;{{ group.value.def.name }}
+                      <div class="group">
+                        <div class="group-left">
+                          <span class="group-arrow"><RotatingArrow v-bind:rotated="group.value.show" /></span>
+                          <span class="group-name">{{ group.value.def.name }}</span>
+                        </div>
+                        <div class="group-right">
+                          <span class="group-count">{{ group.variables.length }}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div class="row indent-variables" v-if="group.value.show">
                     <div class="col">
                       <div class="row" v-for="variable in group.variables" v-bind:key="variable.value.def.id">
-                        <div class="col" v-on:click="$emit('toggle-selected', variable.value)">
+                        <div class="col" v-on:dblclick="$emit('toggle-selected', variable.value)">
                           {{ variable.value.def.id }}, selected: {{ variable.value.selected }}
                         </div>
                       </div>
@@ -66,16 +81,39 @@ export default {
       sanitizedQuery.value !== '' ? FilterConfigByVariableName(props.config, sanitizedQuery.value) : props.config
     );
 
+    const getCategoryVariableCount = category => category.groups.reduce((acc, group) => acc + group.variables.length, 0);
+
     const mounted = () => {
       console.log('siemka');
     }
 
-    return { query, sanitizedQuery, filteredConfig, mounted };
+    return { query, sanitizedQuery, filteredConfig, getCategoryVariableCount, mounted };
   }
 }
 </script>
 
 <style lang="scss" scoped>
+  .category {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .group-count {
+    font-size: small;
+    margin-right: .06rem;
+  }
+
+  .group-arrow {
+    margin-right: .25rem;
+  }
+
   .search-card {
     display: flex;
     flex-direction: row;
