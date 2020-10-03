@@ -26,7 +26,7 @@ export const FilterConfigByVariableName = (config, query) =>
     value: origCategory.value,
     groups: origCategory.groups.map(origGroup => ({
       value: origGroup.value,
-      variables: origGroup.variables.filter(variable => variable.value.def.id.includes(query))
+      variables: origGroup.variables.filter(variable => variable.value.def.id.toLowerCase().includes(query))
     })).filter(filteredGroup => filteredGroup.variables.length > 0)
   })).filter(filteredCategory => filteredCategory.groups.length > 0));
 
