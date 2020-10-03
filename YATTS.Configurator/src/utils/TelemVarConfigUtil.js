@@ -3,12 +3,12 @@ import { reactive, markRaw } from 'vue';
 export const GetInitialConfig = telemVarDefinitions => 
   reactive(telemVarDefinitions.map(category => ({
     value: {
-      def: markRaw(category),
+      def: markRaw(category.def),
       show: false
     },
     groups: category.groups.map(group => ({
       value: {
-        def: markRaw(group),
+        def: markRaw(group.def),
         show: false
       },
       variables: group.variables.map(variable => ({
