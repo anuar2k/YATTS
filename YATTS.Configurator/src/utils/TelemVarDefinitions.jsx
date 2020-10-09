@@ -1,9 +1,11 @@
+import DescWarning from '@/components/DescWarning';
+
 export default [
   {
     def: {
       id: 'channel',
       name: 'Channel variables',
-      description: 'streamed continuously'
+      desc: 'streamed continuously'
     },
     groups: [
       {
@@ -14,14 +16,18 @@ export default [
         variables: [
           {
             id: 'local.scale',
+            name: 'Local scale',
             type: 5,
             desc: () => <>
-              <p>This is a paragraph.</p>
-              <p>This is an another paragraph.</p>
+              <p>Scale applied to distance and time to compensate for the scale of the map (e.g. 1s of real time corresponds to <code>local.scale</code> seconds of simulated game time).</p>
+              <p>Games which use real 1:1 maps will not provide this channel.</p>
+              <p>Type: <code>float</code></p>
+              <DescWarning>This is a warning message!</DescWarning>
             </>
           },
           {
             id: 'game.time',
+            name: 'Game time',
             type: 3,
             desc: () => <>
               this is just a text literal
@@ -37,10 +43,12 @@ export default [
         variables: [
           {
             id: 'speed',
+            name: 'Speed',
             type: 5
           },
           {
             id: 'blinker.left',
+            name: 'Left blinker (toggle)',
             type: 1
           }
         ]
@@ -53,10 +61,12 @@ export default [
         variables: [
           {
             id: 'connected',
+            name: 'Connected',
             type: 1
           },
           {
             id: 'wheel.speed',
+            name: 'Wheel speed',
             type: 5
           }
         ]
@@ -67,7 +77,7 @@ export default [
     def: {
       id: 'config',
       name: 'Config variables',
-      description: 'sent only, when a group\'s variable changes'
+      desc: 'sent only, when a group\'s variable changes'
     },
     groups: [
       {
@@ -92,8 +102,7 @@ export default [
     def: {
       id: 'event',
       name: 'Event variables',
-      description: 'sent only, when an event occurs'
-
+      desc: 'sent only, when an event occurs'
     },
     groups: []
   }

@@ -1,14 +1,18 @@
 <template>
-  <h2 class="head bg-1">
+  <div class="head bg-1">
     YATTS.Configurator
-  </h2>
+  </div>
   <div class="container">
+    <div class="row mb-2">
+      <div class="col">
+        <TelemVarCard />
+      </div>
+    </div>
     <div class="row">
       <div class="col">
         <TelemVarSelector 
           v-bind:config="config" 
           v-on:toggle-show="toggleShow"
-          v-on:toggle-selected="toggleSelected" 
         />
       </div>
       <div class="col desc">
@@ -19,6 +23,7 @@
 </template>
 
 <script>
+import TelemVarCard from '@/components/TelemVarCard';
 import TelemVarSelector from '@/components/TelemVarSelector';
 
 import TelemVarDefinitions from '@/utils/TelemVarDefinitions';
@@ -33,14 +38,11 @@ export default {
       subtree.show = !subtree.show;
     }
 
-    const toggleSelected = variable => {
-      variable.selected = !variable.selected;
-    }
-
-    return { config, toggleShow, toggleSelected }
+    return { config, toggleShow }
   },
   components: {
-    TelemVarSelector 
+    TelemVarCard,
+    TelemVarSelector
   }
 }
 </script>
