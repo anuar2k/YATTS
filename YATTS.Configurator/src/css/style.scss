@@ -32,6 +32,14 @@ body {
   text-align: left;
 }
 
+code {
+  padding: .1rem .3rem;
+  margin: 0;
+  background-color: #f4f4f4;
+  border-radius: 6px;
+  font-family: 'Courier New', Courier, monospace;
+}
+
 .container {
   max-width: 1400px;
   width: 100%;
@@ -43,6 +51,10 @@ body {
 
 .p-2 {
   padding: .5rem;
+}
+
+.mb-2 {
+  margin-bottom: .5rem;
 }
 
 .margin-between:not(:last-child) {
@@ -75,4 +87,15 @@ body {
   background-clip: border-box;
   border: 1px solid rgba(0,0,0,.125);
   border-radius: .25rem;
+}
+
+.desc-warning {
+  padding: .5rem;
+  background-color: rgb(255, 229, 85);
+  border-radius: .25rem;
+  color: #5e4702;
+}
+
+.desc-warning-icon {
+  margin-right: .25rem;
 }
