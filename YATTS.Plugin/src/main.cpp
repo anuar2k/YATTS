@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "TelemVar.hpp"
-#include "TelemVarSet.hpp"
+#include "telemvar/TelemVar.hpp"
+#include "telemvar/TelemVarSet.hpp"
 
 #include <vector>
 #include <set>
@@ -24,7 +24,7 @@
 scs_log_t game_log = nullptr;
 HANDLE timer_queue = NULL;
 
-std::vector<std::shared_ptr<ChannelTelemVar>> channel_vars;
+std::vector<std::shared_ptr<StreamedScalarTelemVar>> channel_vars;
 std::set<std::shared_ptr<TelemVarSet>, TelemVarSet::shared_ptrCmp> config_vars;
 std::set<std::shared_ptr<TelemVarSet>, TelemVarSet::shared_ptrCmp> event_vars;
 
@@ -104,7 +104,7 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
 	}
 
 	//refresh dynamic_count ChannelTelemVars
-	for (const std::shared_ptr<ChannelTelemVar>& ctv : channel_vars) {
+	for (const std::shared_ptr<StreamedScalarTelemVar>& ctv : channel_vars) {
 		ctv->reg_callbacks();
 	}
 
@@ -189,7 +189,7 @@ bool load_config() {
 					throw std::exception("channel string variables are not supported");
 				}
 
-				channel_vars.emplace_back(std::make_shared<ChannelTelemVar>(name, type, max_count, dynamic_count));
+				channel_vars.emplace_back(std::make_shared<StreamedScalarTelemVar>(name, type, max_count, dynamic_count));
 			}
 		}
 
@@ -289,8 +289,8 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 		return SCS_RESULT_generic_error;
 	}
 
-	ChannelTelemVar::reg_chan = version_params->register_for_channel;
-	ChannelTelemVar::unreg_chan = version_params->unregister_from_channel;
+	StreamedScalarTelemVar::reg_chan = version_params->register_for_channel;
+	StreamedScalarTelemVar::unreg_chan = version_params->unregister_from_channel;
 
 	//loading telemvars from config--------------------------------------------
 
@@ -299,7 +299,7 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 		return SCS_RESULT_generic_error;
 	}
 
-	for (const std::shared_ptr<ChannelTelemVar>& ctv : channel_vars) {
+	for (const std::shared_ptr<StreamedScalarTelemVar>& ctv : channel_vars) {
 		ctv->reg_callbacks();
 	}
 
@@ -335,15 +335,15 @@ SCSAPI_VOID scs_telemetry_shutdown(void) {
 
 	//make sure, that we're not leaving any instances of CTV with a callback registered...
 	//it shouldn't happen though - at this point the only valid shared_ptr to them should be in vector below
-	for (const std::shared_ptr<ChannelTelemVar>& ctv : channel_vars) {
+	for (const std::shared_ptr<StreamedScalarTelemVar>& ctv : channel_vars) {
 		ctv->unreg_callbacks();
 	}
 	channel_vars.clear();
 	config_vars.clear();
 	event_vars.clear();
 
-	ChannelTelemVar::reg_chan = nullptr;
-	ChannelTelemVar::unreg_chan = nullptr;
+	StreamedScalarTelemVar::reg_chan = nullptr;
+	StreamedScalarTelemVar::unreg_chan = nullptr;
 	game_log = nullptr;
 }
 
