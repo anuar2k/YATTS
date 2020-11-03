@@ -9,24 +9,28 @@
 class TelemVarSet {
 	public:
 
-	TelemVarSet(std::string name) : name(name) { }
+	TelemVarSet(std::string name) : name(name) { 
+	
+	}
 
-	~TelemVarSet() { }
+	~TelemVarSet() { 
+	
+	}
 
-	void insert(std::shared_ptr<TelemVar> tv) {
+	void insert(std::shared_ptr<BaseTelemVar> tv) {
 		assert(config_vars_set.find(tv) == config_vars_set.end());
 		config_vars_vec.push_back(tv);
 		config_vars_set.insert(tv);
 	}
 
-	std::shared_ptr<TelemVar> try_get(const char* name) {
+	std::shared_ptr<BaseTelemVar> try_get(const char* name) {
 		auto result = config_vars_set.find(name);
-		return result != config_vars_set.end() ? *result : std::shared_ptr<TelemVar>();
+		return result != config_vars_set.end() ? *result : std::shared_ptr<BaseTelemVar>();
 	}
 
 	void update_set(const scs_named_value_t* attributes) {
 		while (attributes->name) {
-			std::shared_ptr<TelemVar> to_update = try_get(attributes->name);
+			std::shared_ptr<BaseTelemVar> to_update = try_get(attributes->name);
 			if (to_update) {
 				assert(attributes->value.type == to_update->type);
 				to_update->store_value(attributes->value, attributes->index);
@@ -44,15 +48,15 @@ class TelemVarSet {
 		return config_vars_vec.size();
 	}
 
-	const std::shared_ptr<TelemVar>& operator[](size_t pos) const {
+	const std::shared_ptr<BaseTelemVar>& operator[](size_t pos) const {
 		return config_vars_vec[pos];
 	}
 
-	std::vector<std::shared_ptr<TelemVar>>::const_iterator begin() const {
+	std::vector<std::shared_ptr<BaseTelemVar>>::const_iterator begin() const {
 		return config_vars_vec.cbegin();
 	}
 
-	std::vector<std::shared_ptr<TelemVar>>::const_iterator end() const {
+	std::vector<std::shared_ptr<BaseTelemVar>>::const_iterator end() const {
 		return config_vars_vec.cend();
 	}
 
@@ -83,6 +87,6 @@ class TelemVarSet {
 
 	private:
 
-	std::vector<std::shared_ptr<TelemVar>> config_vars_vec;
-	std::set<std::shared_ptr<TelemVar>, TelemVar::shared_ptrCmp> config_vars_set;
+	std::vector<std::shared_ptr<BaseTelemVar>> config_vars_vec;
+	std::set<std::shared_ptr<BaseTelemVar>, BaseTelemVar::shared_ptrCmp> config_vars_set;
 };

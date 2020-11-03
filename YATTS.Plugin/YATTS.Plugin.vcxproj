@@ -29,13 +29,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
-    <ClInclude Include="src\scssdk_value_sizes.h" />
-    <ClInclude Include="src\TelemVar.hpp" />
-    <ClInclude Include="src\TelemVarSet.hpp" />
+    <ClInclude Include="src\telemvar\BaseTelemVar.hpp" />
+    <ClInclude Include="src\telemvar\ChannelUpdateHandler.hpp" />
+    <ClInclude Include="src\telemvar\FloatConvTelemVar.hpp" />
+    <ClInclude Include="src\telemvar\ScalarTelemVar.hpp" />
+    <ClInclude Include="src\telemvar\StreamedTelemVar.hpp" />
+    <ClInclude Include="src\telemvar\StringTelemVar.hpp" />
+    <ClInclude Include="src\telemvar\TelemVar.hpp" />
+    <ClInclude Include="src\telemvar\TelemVarSet.hpp" />
+    <ClInclude Include="src\utils\scssdk_value_sizes.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\main.def" />
-    <None Include="src\sample_YATTS.Config.json" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

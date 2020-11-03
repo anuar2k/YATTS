@@ -6,12 +6,43 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\pch.h" />
-    <ClInclude Include="src\TelemVar.hpp" />
-    <ClInclude Include="src\scssdk_value_sizes.h" />
-    <ClInclude Include="src\TelemVarSet.hpp" />
+    <ClInclude Include="src\telemvar\BaseTelemVar.hpp">
+      <Filter>telemvar</Filter>
+    </ClInclude>
+    <ClInclude Include="src\telemvar\ChannelUpdateHandler.hpp">
+      <Filter>telemvar</Filter>
+    </ClInclude>
+    <ClInclude Include="src\telemvar\FloatConvTelemVar.hpp">
+      <Filter>telemvar</Filter>
+    </ClInclude>
+    <ClInclude Include="src\telemvar\ScalarTelemVar.hpp">
+      <Filter>telemvar</Filter>
+    </ClInclude>
+    <ClInclude Include="src\telemvar\StreamedTelemVar.hpp">
+      <Filter>telemvar</Filter>
+    </ClInclude>
+    <ClInclude Include="src\telemvar\StringTelemVar.hpp">
+      <Filter>telemvar</Filter>
+    </ClInclude>
+    <ClInclude Include="src\telemvar\TelemVar.hpp">
+      <Filter>telemvar</Filter>
+    </ClInclude>
+    <ClInclude Include="src\telemvar\TelemVarSet.hpp">
+      <Filter>telemvar</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils\scssdk_value_sizes.h">
+      <Filter>utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="src\main.def" />
-    <None Include="src\sample_YATTS.Config.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="telemvar">
+      <UniqueIdentifier>{4549fda1-160f-4889-aa02-0d6be2d2752f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{a8acb3cd-9296-4ada-806f-82db582ff00e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
