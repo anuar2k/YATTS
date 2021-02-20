@@ -8,8 +8,8 @@ class StringTelemVar : public BaseTelemVar {
 	public:
 
 	//if truncate is set, all strings will be null-padded to preserve static frame length
-	StringTelemVar(std::string name, size_t truncate_nullpad = 0, scs_u32_t max_count = SCS_U32_NIL, scs_u32_t* dynamic_count = nullptr) :
-		BaseTelemVar(name, SCS_VALUE_TYPE_string, max_count, dynamic_count), truncate_nullpad(truncate_nullpad), storage(max_count == SCS_U32_NIL ? 1 : max_count) {
+	StringTelemVar(std::string name, scs_u32_t max_count, scs_u32_t* dynamic_count, size_t truncate_nullpad) :
+		BaseTelemVar(name, max_count, dynamic_count, SCS_VALUE_TYPE_string), truncate_nullpad(truncate_nullpad), storage(max_count == SCS_U32_NIL ? 1 : max_count) {
 		for (std::vector<char>& storage_elem : storage) {
 			//init storage with empty strings
 			std::fill_n(std::back_inserter(storage_elem), truncate_nullpad ? truncate_nullpad : 1, '\0');

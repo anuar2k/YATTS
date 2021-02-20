@@ -89,13 +89,11 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
 
 	//update dynamic count
 	#pragma warning(suppress: 6011)
-	auto dyn_count_set_search = dynamic_count_vars.find(config_info->id);
-	if (dyn_count_set_search != dynamic_count_vars.end()) {
-		auto& map = dyn_count_set_search->second;
+	if (auto map_search = dynamic_count_vars.find(config_info->id); map_search != dynamic_count_vars.end()) {
+		auto& map = map_search->second;
 		const scs_named_value_t* attributes = config_info->attributes;
 		while (attributes->name) {
-			auto to_update_search = map.find(attributes->name);
-			if (to_update_search != map.end()) {
+			if (auto to_update_search = map.find(attributes->name); to_update_search != map.end()) {
 				assert(attributes->value.type == SCS_VALUE_TYPE_u32);
 				to_update_search->second = attributes->value.value_u32.value;
 			}
@@ -108,10 +106,8 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
 		ctv->reg_callbacks();
 	}
 
-	#pragma warning(suppress: 6011)
-	auto set_search = config_vars.find(config_info->id);
-
-	if (set_search != config_vars.end()) {
+	//#pragma warning(suppress: 6011)
+	if (auto set_search = config_vars.find(config_info->id); set_search != config_vars.end()) {
 		std::shared_ptr<TelemVarSet> set = *set_search;
 		set->update_set(config_info->attributes);
 	}
@@ -122,26 +118,19 @@ SCSAPI_VOID telemetry_gameplay_event(const scs_event_t event, const void* const 
 	const scs_telemetry_gameplay_event_t* const gp_event_info = static_cast<const scs_telemetry_gameplay_event_t*>(event_info);
 	assert(gp_event_info);
 
-	#pragma warning(suppress: 6011)
-	auto set_search = event_vars.find(gp_event_info->id);
-
-	if (set_search != event_vars.end()) {
+	//#pragma warning(suppress: 6011)
+	if (auto set_search = event_vars.find(gp_event_info->id); set_search != event_vars.end()) {
 		std::shared_ptr<TelemVarSet> set = *set_search;
 		set->update_set(gp_event_info->attributes);
 	}
 }
 
-scs_u32_t* get_dynamic_count_ptr(std::string& dynamic_count_set_name, std::string& dynamic_count_var_name) {
-	if (!dynamic_count_set_name.empty() && !dynamic_count_var_name.empty()) {
-		auto dyn_count_set_search = dynamic_count_vars.find(dynamic_count_set_name);
+scs_u32_t* get_dynamic_count_ptr(std::string& set_name, std::string& var_name) {
+	if (auto map_search = dynamic_count_vars.find(set_name); map_search != dynamic_count_vars.end()) {
+		auto& map = map_search->second;
 
-		if (dyn_count_set_search != dynamic_count_vars.end()) {
-			auto& map = dyn_count_set_search->second;
-
-			auto dyn_count_search = map.find(dynamic_count_var_name);
-			if (dyn_count_search != map.end()) {
-				return &dyn_count_search->second;
-			}
+		if (auto dyn_count_search = map.find(var_name); dyn_count_search != map.end()) {
+			return &dyn_count_search->second;
 		}
 	}
 
@@ -167,7 +156,7 @@ bool load_config() {
 
 		//loading ChannelTelemVars---------------------------------------------
 		for (const json& ctv_set_desc : config.at("channel_vars")) {
-			std::string ctv_set_name = ctv_set_desc.at("name");
+			std::string ctv_set_name = ctv_set_desc.at("name").get<std::string>();
 
 			const json& ctv_list = ctv_set_desc.at("vars");
 			var_count += ctv_list.size();
@@ -180,23 +169,24 @@ bool load_config() {
 
 				if (max_count != SCS_U32_NIL && ctv_desc.contains("dynamic_count")) {
 					const json& dynamic_count_desc = ctv_desc.at("dynamic_count");
-					std::string dynamic_count_set_name = dynamic_count_desc.value("set_name", std::string());
-					std::string dynamic_count_var_name = dynamic_count_desc.value("var_name", std::string());
+					std::string dynamic_count_set_name = dynamic_count_desc.at("set_name").get<std::string>();
+					std::string dynamic_count_var_name = dynamic_count_desc.at("var_name").get<std::string>();
 					dynamic_count = get_dynamic_count_ptr(dynamic_count_set_name, dynamic_count_var_name);
 				}
 
+				//TODO: this will not be true anymore as ChannelUpdateHandlers will be introduced
 				if (type == SCS_VALUE_TYPE_string) {
 					throw std::exception("channel string variables are not supported");
 				}
 
-				channel_vars.emplace_back(std::make_shared<StreamedScalarTelemVar>(name, type, max_count, dynamic_count));
+				channel_vars.emplace_back(std::make_shared<StreamedScalarTelemVar>(name, max_count, dynamic_count, type));
 			}
 		}
 
 		//loading config and event TelemVars-----------------------------------
 		auto parse_telemvar_sets = [&var_count](const json& source, std::set<std::shared_ptr<TelemVarSet>, TelemVarSet::shared_ptrCmp>& target) {
 			for (const json& tv_set_desc : source) {
-				std::string tv_set_name = tv_set_desc.at("name");
+				std::string tv_set_name = tv_set_desc.at("name").get<std::string>();
 				std::shared_ptr<TelemVarSet> tvs = std::make_shared<TelemVarSet>(tv_set_name);
 
 				const json& tv_list = tv_set_desc.at("vars");
@@ -210,8 +200,8 @@ bool load_config() {
 
 					if (max_count != SCS_U32_NIL && tv_desc.contains("dynamic_count")) {
 						const json& dynamic_count_desc = tv_desc.at("dynamic_count");
-						std::string dynamic_count_set_name = dynamic_count_desc.value("set_name", std::string());
-						std::string dynamic_count_var_name = dynamic_count_desc.value("var_name", std::string());
+						std::string dynamic_count_set_name = dynamic_count_desc.at("set_name").get<std::string>();
+						std::string dynamic_count_var_name = dynamic_count_desc.at("var_name").get<std::string>();
 						dynamic_count = get_dynamic_count_ptr(dynamic_count_set_name, dynamic_count_var_name);
 					}
 
@@ -222,10 +212,10 @@ bool load_config() {
 							throw std::exception("truncate_nullpad parameter must not be 0");
 						}
 
-						tvs->insert(std::make_shared<StringTelemVar>(name, truncate_nullpad, max_count, dynamic_count));
+						tvs->insert(std::make_shared<StringTelemVar>(name, max_count, dynamic_count, truncate_nullpad));
 					}
 					else {
-						tvs->insert(std::make_shared<ScalarTelemVar>(name, type, max_count, dynamic_count));
+						tvs->insert(std::make_shared<ScalarTelemVar>(name, max_count, dynamic_count, type));
 					}
 				}
 

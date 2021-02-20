@@ -7,8 +7,8 @@
 class ScalarTelemVar : public BaseTelemVar {
 	public:
 
-	ScalarTelemVar(std::string name, scs_value_type_t type, scs_u32_t max_count = SCS_U32_NIL, scs_u32_t* dynamic_count = nullptr) :
-		BaseTelemVar(name, type, max_count, dynamic_count), storage(max_count == SCS_U32_NIL ? 1 : max_count) {
+	ScalarTelemVar(std::string name, scs_u32_t max_count, scs_u32_t* dynamic_count, scs_value_type_t type) :
+		BaseTelemVar(name, max_count, dynamic_count, type), storage(max_count == SCS_U32_NIL ? 1 : max_count) {
 	}
 
 	virtual ~ScalarTelemVar() {

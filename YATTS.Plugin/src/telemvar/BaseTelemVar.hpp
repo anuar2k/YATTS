@@ -6,8 +6,8 @@
 class BaseTelemVar abstract {
 	public:
 
-	BaseTelemVar(std::string name, scs_value_type_t type, scs_u32_t max_count = SCS_U32_NIL, scs_u32_t* dynamic_count = nullptr) :
-		name(name), type(type), type_size(scssdk_value_sizes[type]), max_count(max_count), dynamic_count(dynamic_count) {
+	BaseTelemVar(std::string name, scs_u32_t max_count, scs_u32_t* dynamic_count, scs_value_type_t type) :
+		name(name), max_count(max_count), dynamic_count(dynamic_count), type(type), type_size(scssdk_value_sizes[type]) {
 
 	}
 
@@ -30,10 +30,10 @@ class BaseTelemVar abstract {
 	virtual const void* get_val(scs_u32_t index) const abstract;
 
 	const std::string name;
-	const scs_value_type_t type;
-	const size_t type_size;
 	const scs_u32_t max_count;
 	scs_u32_t* const dynamic_count;
+	const scs_value_type_t type;
+	const size_t type_size;
 
 	//this should be probably generated using a template to work with a plethora of other ptr types
 	struct shared_ptrCmp {
