@@ -9,22 +9,10 @@
 #include <memory>
 #include <fstream>
 
-#define YATTS_MAKE_VERSION_HELPER(major, minor, patch) #major "." #minor "." #patch
-#define YATTS_MAKE_VERSION(major, minor, patch) YATTS_MAKE_VERSION_HELPER(major, minor, patch)
-
-#define YATTS_VERSION_MAJOR 0
-#define YATTS_VERSION_MINOR 1
-#define YATTS_VERSION_PATCH 0
-
-#define YATTS_VERSION YATTS_MAKE_VERSION(YATTS_VERSION_MAJOR, YATTS_VERSION_MINOR, YATTS_VERSION_PATCH)
-
-//path is relative to the game's executable
-#define CONFIG_PATH "plugins\\YATTS.Config.json"
-
 scs_log_t game_log = nullptr;
 HANDLE timer_queue = NULL;
 
-std::vector<std::shared_ptr<StreamedScalarTelemVar>> channel_vars;
+std::vector<std::unique_ptr<ChannelUpdateHandler>> channel_vars;
 std::set<std::shared_ptr<TelemVarSet>, TelemVarSet::shared_ptrCmp> config_vars;
 std::set<std::shared_ptr<TelemVarSet>, TelemVarSet::shared_ptrCmp> event_vars;
 
@@ -69,11 +57,11 @@ VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
 	bool on_ground[6];
 
 	for (scs_u32_t i = 0; i < 6; ++i) {
-		on_ground[i] = *reinterpret_cast<const bool*>(channel_vars[0]->get_val(i));
+		on_ground[i] = *reinterpret_cast<const bool*>(channel_vars[0]->telemvar->get_val(i));
 	}
 
 	log_line(SCS_LOG_TYPE_message, "%s: %d %d %d %d %d %d",
-			 channel_vars[0]->name.c_str(),
+			 channel_vars[0]->telemvar->name.c_str(),
 			 on_ground[0],
 			 on_ground[1],
 			 on_ground[2],
@@ -102,8 +90,8 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
 	}
 
 	//refresh dynamic_count ChannelTelemVars
-	for (const std::shared_ptr<StreamedScalarTelemVar>& ctv : channel_vars) {
-		ctv->reg_callbacks();
+	for (std::unique_ptr<ChannelUpdateHandler>& cah : channel_vars) {
+		cah->reg_callbacks();
 	}
 
 	//#pragma warning(suppress: 6011)
@@ -143,7 +131,7 @@ bool load_config() {
 		std::ifstream config_file(CONFIG_PATH);
 
 		if (config_file.fail()) {
-			throw std::exception("config file not found - it must be accessible under " CONFIG_PATH);
+			throw std::exception("config file not found - it must be accessible under <game executable location>\\" CONFIG_PATH);
 		}
 
 		const json config = json::parse(config_file);
@@ -154,34 +142,8 @@ bool load_config() {
 			throw std::exception("major version doesn't match");
 		}
 
+		//TODO: merge these methods!!!1111
 		//loading ChannelTelemVars---------------------------------------------
-		for (const json& ctv_set_desc : config.at("channel_vars")) {
-			std::string ctv_set_name = ctv_set_desc.at("name").get<std::string>();
-
-			const json& ctv_list = ctv_set_desc.at("vars");
-			var_count += ctv_list.size();
-
-			for (const json& ctv_desc : ctv_list) {
-				std::string name = ctv_set_name + "." + ctv_desc.at("name").get<std::string>();
-				scs_value_type_t type = ctv_desc.at("type").get<scs_value_type_t>();
-				scs_u32_t max_count = ctv_desc.value("max_count", SCS_U32_NIL);
-				scs_u32_t* dynamic_count = nullptr;
-
-				if (max_count != SCS_U32_NIL && ctv_desc.contains("dynamic_count")) {
-					const json& dynamic_count_desc = ctv_desc.at("dynamic_count");
-					std::string dynamic_count_set_name = dynamic_count_desc.at("set_name").get<std::string>();
-					std::string dynamic_count_var_name = dynamic_count_desc.at("var_name").get<std::string>();
-					dynamic_count = get_dynamic_count_ptr(dynamic_count_set_name, dynamic_count_var_name);
-				}
-
-				//TODO: this will not be true anymore as ChannelUpdateHandlers will be introduced
-				if (type == SCS_VALUE_TYPE_string) {
-					throw std::exception("channel string variables are not supported");
-				}
-
-				channel_vars.emplace_back(std::make_shared<StreamedScalarTelemVar>(name, max_count, dynamic_count, type));
-			}
-		}
 
 		//loading config and event TelemVars-----------------------------------
 		auto parse_telemvar_sets = [&var_count](const json& source, std::set<std::shared_ptr<TelemVarSet>, TelemVarSet::shared_ptrCmp>& target) {
@@ -208,8 +170,8 @@ bool load_config() {
 					if (type == SCS_VALUE_TYPE_string) {
 						size_t truncate_nullpad = tv_desc.at("truncate_nullpad").get<size_t>();
 
-						if (truncate_nullpad == 0) {
-							throw std::exception("truncate_nullpad parameter must not be 0");
+						if (truncate_nullpad < 1) {
+							throw std::exception("truncate_nullpad parameter must be greater than 0");
 						}
 
 						tvs->insert(std::make_shared<StringTelemVar>(name, max_count, dynamic_count, truncate_nullpad));
@@ -279,8 +241,8 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 		return SCS_RESULT_generic_error;
 	}
 
-	StreamedScalarTelemVar::reg_chan = version_params->register_for_channel;
-	StreamedScalarTelemVar::unreg_chan = version_params->unregister_from_channel;
+	ChannelUpdateHandler::reg_chan = version_params->register_for_channel;
+	ChannelUpdateHandler::unreg_chan = version_params->unregister_from_channel;
 
 	//loading telemvars from config--------------------------------------------
 
@@ -289,8 +251,8 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 		return SCS_RESULT_generic_error;
 	}
 
-	for (const std::shared_ptr<StreamedScalarTelemVar>& ctv : channel_vars) {
-		ctv->reg_callbacks();
+	for (std::unique_ptr<ChannelUpdateHandler>& cah : channel_vars) {
+		cah->reg_callbacks();
 	}
 
 	//timer registration-------------------------------------------------------
@@ -323,17 +285,12 @@ SCSAPI_VOID scs_telemetry_shutdown(void) {
 		assert(result);
 	}
 
-	//make sure, that we're not leaving any instances of CTV with a callback registered...
-	//it shouldn't happen though - at this point the only valid shared_ptr to them should be in vector below
-	for (const std::shared_ptr<StreamedScalarTelemVar>& ctv : channel_vars) {
-		ctv->unreg_callbacks();
-	}
 	channel_vars.clear();
 	config_vars.clear();
 	event_vars.clear();
 
-	StreamedScalarTelemVar::reg_chan = nullptr;
-	StreamedScalarTelemVar::unreg_chan = nullptr;
+	ChannelUpdateHandler::reg_chan = nullptr;
+	ChannelUpdateHandler::unreg_chan = nullptr;
 	game_log = nullptr;
 }
 

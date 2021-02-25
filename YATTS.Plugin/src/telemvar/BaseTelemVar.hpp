@@ -1,13 +1,21 @@
 #pragma once
 #include "../pch.h"
 #include "../utils/scssdk_value_sizes.h"
+
 #include <string>
 
 class BaseTelemVar abstract {
 	public:
 
-	BaseTelemVar(std::string name, scs_u32_t max_count, scs_u32_t* dynamic_count, scs_value_type_t type) :
-		name(name), max_count(max_count), dynamic_count(dynamic_count), type(type), type_size(scssdk_value_sizes[type]) {
+	BaseTelemVar(std::string name, 
+				 scs_u32_t max_count, 
+				 scs_u32_t* dynamic_count, 
+				 scs_value_type_t type) :
+		name(name), 
+		max_count(max_count), 
+		dynamic_count(dynamic_count), 
+		type(type), 
+		type_size(scssdk_value_sizes[type]) {
 
 	}
 
@@ -15,18 +23,17 @@ class BaseTelemVar abstract {
 
 	}
 
-	//ensure that TelemVar isn't moved around the memory - a callback is registered to the object pointing at the address
-	//disabled copy ctor makes it impossible to store the object directly in a container - use dynalloc
-	BaseTelemVar& operator=(BaseTelemVar&) = delete;
-	BaseTelemVar(BaseTelemVar&) = delete;
-
 	//writes max_count * type_size bytes of stored data to the buffer; string is an exception, obviously
 	//TODO: consider adding an endianness switch (little endian by default)
 	virtual void write_to_buf(std::vector<char>& buffer) const abstract;
 
 	virtual void store_value(scs_value_t value, scs_u32_t index) abstract;
 
-	//debug-only method
+	virtual size_t get_size() const {
+		return type_size * max_count;
+	}
+
+	//debug-only method, keep in mind these pointers might be invalidated after resize of storage
 	virtual const void* get_val(scs_u32_t index) const abstract;
 
 	const std::string name;

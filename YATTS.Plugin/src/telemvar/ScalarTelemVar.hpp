@@ -9,9 +9,11 @@ class ScalarTelemVar : public BaseTelemVar {
 
 	ScalarTelemVar(std::string name, scs_u32_t max_count, scs_u32_t* dynamic_count, scs_value_type_t type) :
 		BaseTelemVar(name, max_count, dynamic_count, type), storage(max_count == SCS_U32_NIL ? 1 : max_count) {
+
 	}
 
 	virtual ~ScalarTelemVar() {
+
 	}
 
 	virtual void write_to_buf(std::vector<char>& buffer) const {
@@ -51,6 +53,7 @@ class ScalarTelemVar : public BaseTelemVar {
 		return &storage[index].value_bool.value;
 	}
 
-	protected:
+	private:
+
 	std::vector<scs_value_t> storage;
 };

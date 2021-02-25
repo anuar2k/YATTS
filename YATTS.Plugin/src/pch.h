@@ -29,3 +29,6 @@
 // JSON for Modern C++
 #include "nlohmann/json.hpp"
 using json = nlohmann::json;
+
+// Constants
+#include "constants.h"

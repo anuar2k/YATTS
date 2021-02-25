@@ -18,9 +18,6 @@
     <ClInclude Include="src\telemvar\ScalarTelemVar.hpp">
       <Filter>telemvar</Filter>
     </ClInclude>
-    <ClInclude Include="src\telemvar\StreamedTelemVar.hpp">
-      <Filter>telemvar</Filter>
-    </ClInclude>
     <ClInclude Include="src\telemvar\StringTelemVar.hpp">
       <Filter>telemvar</Filter>
     </ClInclude>

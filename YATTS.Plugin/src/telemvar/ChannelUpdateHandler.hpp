@@ -2,55 +2,65 @@
 #include "../pch.h"
 #include "BaseTelemVar.hpp"
 
-SCSAPI_VOID chan_callback(const scs_string_t name, const scs_u32_t index, const scs_value_t* const value, const scs_context_t context);
+#include <memory>
 
-class ChannelUpdateHandler abstract {
+SCSAPI_VOID chan_callback(const scs_string_t name, 
+						  const scs_u32_t index, 
+						  const scs_value_t* const value, 
+						  const scs_context_t context);
+
+class ChannelUpdateHandler {
 	public:
 
-	ChannelUpdateHandler(BaseTelemVar& tv) : tv(tv) {
+	ChannelUpdateHandler(std::unique_ptr<BaseTelemVar> telemvar) : telemvar(std::move(telemvar)) {
 
 	}
 
-	virtual ~ChannelUpdateHandler() {
+	~ChannelUpdateHandler() {
 		unreg_callbacks();
 	}
 
+	//this object is non copyable nor movable, because a pointer to it will be passed to the game
+	//we don't want to move this object around
+	ChannelUpdateHandler& operator=(ChannelUpdateHandler&) = delete;
+	ChannelUpdateHandler(ChannelUpdateHandler&) = delete;
+
 	//can be called multiple times to adjust the number of registered channels based on dynamic_count
 	void reg_callbacks() {
-		if (tv.dynamic_count) {
-			while (reg_chan_cnt < *tv.dynamic_count && reg_chan_cnt < tv.max_count) {
-				reg_chan(tv.name.c_str(), reg_chan_cnt, tv.type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
+		if (telemvar->dynamic_count) {
+			while (reg_chan_cnt < *telemvar->dynamic_count && reg_chan_cnt < telemvar->max_count) {
+				reg_chan(telemvar->name.c_str(), reg_chan_cnt, telemvar->type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
 				++reg_chan_cnt;
 			}
-			while (reg_chan_cnt > *tv.dynamic_count && reg_chan_cnt > 0) {
+			while (reg_chan_cnt > *telemvar->dynamic_count && reg_chan_cnt > 0) {
 				--reg_chan_cnt;
-				unreg_chan(tv.name.c_str(), reg_chan_cnt, tv.type);
+				unreg_chan(telemvar->name.c_str(), reg_chan_cnt, telemvar->type);
 			}
 		}
 		else {
 			if (reg_chan_cnt == 0) {
-				if (tv.max_count == SCS_U32_NIL) {
-					reg_chan(tv.name.c_str(), SCS_U32_NIL, tv.type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
+				if (telemvar->max_count == SCS_U32_NIL) {
+					reg_chan(telemvar->name.c_str(), SCS_U32_NIL, telemvar->type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
 				}
 				else {
-					for (scs_u32_t i = 0; i < tv.max_count; ++i) {
-						reg_chan(tv.name.c_str(), i, tv.type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
+					for (scs_u32_t i = 0; i < telemvar->max_count; ++i) {
+						reg_chan(telemvar->name.c_str(), i, telemvar->type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
 					}
 				}
-				reg_chan_cnt = tv.max_count;
+				reg_chan_cnt = telemvar->max_count;
 			}
 		}
 	}
 
 	void unreg_callbacks() {
 		if (reg_chan_cnt != 0) {
-			if (tv.max_count == SCS_U32_NIL) {
-				unreg_chan(tv.name.c_str(), SCS_U32_NIL, tv.type);
+			if (telemvar->max_count == SCS_U32_NIL) {
+				unreg_chan(telemvar->name.c_str(), SCS_U32_NIL, telemvar->type);
 			}
 			else {
 				while (reg_chan_cnt > 0) {
 					--reg_chan_cnt;
-					unreg_chan(tv.name.c_str(), reg_chan_cnt, tv.type);
+					unreg_chan(telemvar->name.c_str(), reg_chan_cnt, telemvar->type);
 				}
 			}
 		}
@@ -59,7 +69,7 @@ class ChannelUpdateHandler abstract {
 	static scs_telemetry_register_for_channel_t reg_chan;
 	static scs_telemetry_unregister_from_channel_t unreg_chan;
 
-	BaseTelemVar& tv;
+	const std::unique_ptr<BaseTelemVar> telemvar;
 
 	protected:
 	scs_u32_t reg_chan_cnt = 0;
@@ -68,10 +78,13 @@ class ChannelUpdateHandler abstract {
 scs_telemetry_register_for_channel_t ChannelUpdateHandler::reg_chan = nullptr;
 scs_telemetry_unregister_from_channel_t ChannelUpdateHandler::unreg_chan = nullptr;
 
-SCSAPI_VOID chan_callback(const scs_string_t name, const scs_u32_t index, const scs_value_t* const value, const scs_context_t context) {
+SCSAPI_VOID chan_callback(const scs_string_t name, 
+						  const scs_u32_t index, 
+						  const scs_value_t* const value, 
+						  const scs_context_t context) {
 	ChannelUpdateHandler* const ch = static_cast<ChannelUpdateHandler*>(context);
-	assert(value && ch && value->type == ch->tv.type);
+	assert(value && ch && value->type == ch->telemvar->type);
 
 	#pragma warning(suppress: 6011)
-	ch->tv.store_value(*value, index);
+	ch->telemvar->store_value(*value, index);
 }

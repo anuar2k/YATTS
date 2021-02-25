@@ -34,7 +34,6 @@
     <ClInclude Include="src\telemvar\FloatConverters.hpp" />
     <ClInclude Include="src\telemvar\FloatConvTelemVar.hpp" />
     <ClInclude Include="src\telemvar\ScalarTelemVar.hpp" />
-    <ClInclude Include="src\telemvar\StreamedTelemVar.hpp" />
     <ClInclude Include="src\telemvar\StringTelemVar.hpp" />
     <ClInclude Include="src\telemvar\TelemVar.hpp" />
     <ClInclude Include="src\telemvar\TelemVarSet.hpp" />
