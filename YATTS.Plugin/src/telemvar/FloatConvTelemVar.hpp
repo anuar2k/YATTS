@@ -26,7 +26,12 @@ class FloatConvTelemVar : public BaseTelemVar {
 					  scs_value_type_t type, 
 					  std::function<double(double)> converter, 
 					  IntCastMode int_conv_mode) :
-		BaseTelemVar(name, max_count, dynamic_count, type), 
+		BaseTelemVar(name, 
+					 max_count, 
+					 dynamic_count, 
+					 type == SCS_VALUE_TYPE_float || type == SCS_VALUE_TYPE_double 
+					 ? type 
+					 : throw std::exception("FloatConvTelemVar is only applicable to float and double types")), 
 		converter(converter), 
 		int_cast_mode(int_conv_mode), 
 		element_size(int_conv_mode != IntCastMode::NONE ? sizeof(int32_t) : type_size) {
@@ -68,6 +73,14 @@ class FloatConvTelemVar : public BaseTelemVar {
 
 	virtual size_t get_size() const {
 		return element_size * max_count;
+	}
+
+	virtual const void* get_val(scs_u32_t index) const {
+		if (index == SCS_U32_NIL) {
+			index = 0;
+		}
+
+		return &storage[index].value_bool.value;
 	}
 
 	const IntCastMode int_cast_mode;

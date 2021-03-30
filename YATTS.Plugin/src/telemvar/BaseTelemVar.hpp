@@ -43,22 +43,22 @@ class BaseTelemVar abstract {
 	const size_t type_size;
 
 	//this should be probably generated using a template to work with a plethora of other ptr types
-	struct shared_ptrCmp {
+	struct unique_ptrCmp {
 		using is_transparent = void;
 
-		bool operator()(std::shared_ptr<BaseTelemVar> const& lhs, const char* const& rhs) const {
+		bool operator()(std::unique_ptr<BaseTelemVar> const& lhs, const char* const& rhs) const {
 			if (!lhs) return bool(rhs);
 			if (!rhs) return false;
 			return lhs->name < rhs;
 		}
 
-		bool operator()(const char* const& lhs, std::shared_ptr<BaseTelemVar> const& rhs) const {
+		bool operator()(const char* const& lhs, std::unique_ptr<BaseTelemVar> const& rhs) const {
 			if (!lhs) return bool(rhs);
 			if (!rhs) return false;
 			return lhs < rhs->name;
 		}
 
-		bool operator()(std::shared_ptr<BaseTelemVar> const& lhs, std::shared_ptr<BaseTelemVar> const& rhs) const {
+		bool operator()(std::unique_ptr<BaseTelemVar> const& lhs, std::unique_ptr<BaseTelemVar> const& rhs) const {
 			if (!lhs) return bool(rhs);
 			if (!rhs) return false;
 			return lhs->name < rhs->name;
