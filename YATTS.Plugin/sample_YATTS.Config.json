@@ -4,6 +4,11 @@
     "minor": 1,
     "patch": 0
   },
+  "serial_port": {
+    "name": "COM4",
+    "baudrate": 115200,
+    "period": 5000
+  }
   "channel_vars": [
     {
       "name": "truck",
@@ -19,7 +24,12 @@
         },
         {
           "name": "speed",
-          "type": 5
+          "type": 5,
+          "float_converter": {
+            "type": "unit",
+            "converter": "MS_TO_KMH",
+            "int_cast_mode": "ROUND"
+          }
         }
       ]
     }
