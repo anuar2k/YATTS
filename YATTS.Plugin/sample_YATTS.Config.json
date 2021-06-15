@@ -7,29 +7,53 @@
   "serial_port": {
     "name": "COM5",
     "baudrate": 115200,
-    "period": 5000
+    "period": 250
   },
   "channel_vars": [
     {
-      "name": "truck",
+      "name": "game",
       "vars": [
         {
-          "name": "wheel.on_ground",
-          "type": 1,
-          "max_count": 6,
-          "dynamic_count": {
-            "set_name": "truck",
-            "var_name": "wheels.count"
-          }
-        },
+          "name": "time",
+          "type": 3
+        }
+      ]
+    },
+    {
+      "name": "truck",
+      "vars": [
         {
           "name": "speed",
           "type": 5,
           "float_converter": {
             "type": "unit",
             "converter": "MS_TO_KMH",
-            "int_cast_mode": "ROUND"
+            "int_cast_mode": "NONE"
           }
+        },
+        {
+          "name": "engine.rpm",
+          "type": 5
+        },
+        {
+          "name": "navigation.speed.limit",
+          "type": 5
+        },
+        {
+          "name": "displayed.gear",
+          "type": 2
+        },
+        {
+          "name": "fuel.amount",
+          "type": 5
+        },
+        {
+          "name": "light.lblinker",
+          "type": 1
+        },
+        {
+          "name": "light.rblinker",
+          "type": 1
         }
       ]
     }
@@ -39,41 +63,20 @@
       "name": "truck",
       "vars": [
         {
-          "name": "id",
-          "type": 12,
-          "truncate_nullpad": 4
-        },
-        {
-          "name": "wheels.count",
-          "type": 3
+          "name": "fuel.capacity",
+          "type": 5
         }
       ]
     },
     {
-      "name": "trailer",
+      "name": "job",
       "vars": [
         {
-          "name": "chain.type",
-          "type": 12,
-          "truncate_nullpad": 10
-        }
-      ]
-    }
-  ],
-  "event_vars": [
-    {
-      "name": "player.fined",
-      "vars": [
-        {
-          "name": "fine.offence",
-          "type": 12,
-          "truncate_nullpad": 20
-        },
-        {
-          "name": "fine.amount",
+          "name": "cargo.mass",
           "type": 5
         }
       ]
     }
-  ]
+  ],
+  "event_vars": []
 }

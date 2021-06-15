@@ -79,28 +79,6 @@ void log_line(const scs_log_type_t type, const char* const text, ...) {
 void write_channel_vars();
 
 VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
-    bool on_ground[6];
-
-    for (scs_u32_t i = 0; i < 6; ++i) {
-        on_ground[i] = *reinterpret_cast<const bool*>(channel_vars[0]->telemvar->debug_val_ptr(i));
-    }
-
-    scs_s32_t speed = *reinterpret_cast<const scs_s32_t*>(channel_vars[1]->telemvar->debug_val_ptr(SCS_U32_NIL));
-
-    log_line(
-        SCS_LOG_TYPE_message,
-        "%s: %d %d %d %d %d %d, %s: %d",
-        channel_vars[0]->telemvar->name.c_str(),
-        on_ground[0],
-        on_ground[1],
-        on_ground[2],
-        on_ground[3],
-        on_ground[4],
-        on_ground[5],
-        channel_vars[1]->telemvar->name.c_str(),
-        speed
-    );
-
     write_channel_vars();
 }
 #pragma endregion

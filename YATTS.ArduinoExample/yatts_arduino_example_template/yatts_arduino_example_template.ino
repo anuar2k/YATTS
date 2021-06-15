@@ -1,3 +1,10 @@
+/**
+ * This file contains a receiver code template matching the variables defined in:
+ * YATTS.Plugin/sample_YATTS.Config.json
+ * 
+ * The user is free to add any code, which will make use of the received data.
+ */
+
 const uint8_t VARS_ID_NONE = 255;
 
 #pragma pack(push, 1)
@@ -61,8 +68,7 @@ void setup() {
   while (!Serial)
     ;
   //User section START
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, false);
+
   //User section END
 }
 
@@ -71,7 +77,7 @@ void loop() {
   
   //User section END
   
-  static size_t progress;
+  static size_t progress = 0;
   static uint8_t selected_vars_id = VARS_ID_NONE;
 
   while (Serial.available() > 0) {
@@ -91,7 +97,7 @@ void loop() {
 
 //User section START
 void channel_vars_handler() {
-  digitalWrite(LED_BUILTIN, channel_vars.vars.truck_speed > 20.0);
+  
 }
 
 void config_vars_game_handler() {
