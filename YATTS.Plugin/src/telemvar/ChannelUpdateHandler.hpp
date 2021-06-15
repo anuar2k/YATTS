@@ -3,6 +3,7 @@
 #include "BaseTelemVar.hpp"
 
 #include <memory>
+#include <mutex>
 
 SCSAPI_VOID chan_callback(
     const scs_string_t name, 
@@ -29,6 +30,8 @@ class ChannelUpdateHandler {
 
     //can be called multiple times to adjust the number of registered channels based on dynamic_count
     void reg_callbacks() {
+        std::scoped_lock lock(telemvar_mut);
+
         if (telemvar->dynamic_count) {
             while (reg_chan_cnt < *telemvar->dynamic_count && reg_chan_cnt < telemvar->max_count) {
                 reg_chan(telemvar->name.c_str(), reg_chan_cnt, telemvar->type, SCS_TELEMETRY_CHANNEL_FLAG_none, chan_callback, this);
@@ -55,6 +58,8 @@ class ChannelUpdateHandler {
     }
 
     void unreg_callbacks() {
+        std::scoped_lock lock(telemvar_mut);
+
         if (reg_chan_cnt != 0) {
             if (telemvar->max_count == SCS_U32_NIL) {
                 unreg_chan(telemvar->name.c_str(), SCS_U32_NIL, telemvar->type);
@@ -72,8 +77,9 @@ class ChannelUpdateHandler {
     static scs_telemetry_unregister_from_channel_t unreg_chan;
 
     const std::unique_ptr<BaseTelemVar> telemvar;
+    mutable std::mutex telemvar_mut;
 
-    protected:
+    private:
     scs_u32_t reg_chan_cnt = 0;
 };
 
@@ -87,6 +93,9 @@ SCSAPI_VOID chan_callback(const scs_string_t name,
     ChannelUpdateHandler* const ch = static_cast<ChannelUpdateHandler*>(context);
     assert(value && ch && value->type == ch->telemvar->type);
 
-    #pragma warning(suppress: 6011)
-    ch->telemvar->store_value(*value, index);
+    {
+        std::scoped_lock lock(ch->telemvar_mut);
+        #pragma warning(suppress: 6011)
+        ch->telemvar->store_value(*value, index);
+    }
 }

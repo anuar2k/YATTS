@@ -1,9 +1,20 @@
-void setup() {
-  // put your setup code here, to run once:
+bool on = false;
 
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  
+  Serial.begin(115200);
+  while (!Serial)
+    ;
+    
+  digitalWrite(LED_BUILTIN, on);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-
+  while (Serial.available() > 0) {
+    if (Serial.read() == 69) {
+      on = !on;
+      digitalWrite(LED_BUILTIN, on);
+    }
+  }
 }

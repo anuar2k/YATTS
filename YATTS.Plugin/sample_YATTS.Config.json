@@ -5,10 +5,10 @@
     "patch": 0
   },
   "serial_port": {
-    "name": "COM4",
+    "name": "COM5",
     "baudrate": 115200,
     "period": 5000
-  }
+  },
   "channel_vars": [
     {
       "name": "truck",

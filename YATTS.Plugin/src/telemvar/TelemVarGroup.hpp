@@ -11,7 +11,7 @@
 class TelemVarGroup {
     public:
 
-    TelemVarGroup(std::string name) : name(name) { 
+    TelemVarGroup(std::string name, char frame_header) : name(name), frame_header(frame_header) { 
     
     }
 
@@ -67,6 +67,7 @@ class TelemVarGroup {
     }
 
     const std::string name;
+    const char frame_header;
 
     //this should be probably generated using a template to work with a plethora of other ptr types
     struct unique_ptrCmp {

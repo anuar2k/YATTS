@@ -72,7 +72,7 @@ class StringTelemVar : public BaseTelemVar {
     }
 
     virtual size_t total_size() const override {
-        return truncate_nullpad * max_count;
+        return truncate_nullpad * (max_count == SCS_U32_NIL ? 1 : max_count);
     }
 
     virtual const void* debug_val_ptr(scs_u32_t index) const override {
@@ -80,7 +80,7 @@ class StringTelemVar : public BaseTelemVar {
             index = 0;
         }
 
-        return &storage[index][0];
+        return storage[index].data();
     }
 
     const size_t truncate_nullpad;

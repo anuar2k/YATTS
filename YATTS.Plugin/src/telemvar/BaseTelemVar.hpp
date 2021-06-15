@@ -32,7 +32,7 @@ class BaseTelemVar abstract {
     virtual void store_value(scs_value_t value, scs_u32_t index) abstract;
 
     virtual size_t total_size() const {
-        return type_size * max_count;
+        return type_size * (max_count == SCS_U32_NIL ? 1 : max_count);
     }
 
     //debug-only method, keep in mind these pointers might be invalidated after resize of storage

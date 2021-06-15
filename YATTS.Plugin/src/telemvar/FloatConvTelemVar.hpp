@@ -84,7 +84,7 @@ class FloatConvTelemVar : public BaseTelemVar {
     }
 
     virtual size_t total_size() const override {
-        return element_size * max_count;
+        return element_size * (max_count == SCS_U32_NIL ? 1 : max_count);
     }
 
     virtual const void* debug_val_ptr(scs_u32_t index) const override {

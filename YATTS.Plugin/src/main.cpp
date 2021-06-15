@@ -16,7 +16,7 @@ struct {
     std::string name;
     DWORD baudrate;
     DWORD period;
-    HANDLE handle = NULL;
+    HANDLE handle = INVALID_HANDLE_VALUE;
 } serial_port;
 
 std::vector<std::unique_ptr<ChannelUpdateHandler>> channel_vars;
@@ -46,6 +46,20 @@ std::map<std::string, std::map<std::string, scs_u32_t, std::less<>>, std::less<>
     {SCS_TELEMETRY_CONFIG_trailer ".9", {{SCS_TELEMETRY_CONFIG_ATTRIBUTE_wheel_count, 0}}}
 };
 
+#pragma region Utilities
+std::wstring s2ws(const std::string& s) {
+    int len;
+    int slength = (int)s.length() + 1;
+    len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
+    wchar_t* buf = new wchar_t[len];
+    MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
+    std::wstring r(buf);
+    delete[] buf;
+    return r;
+}
+#pragma endregion
+
+#pragma region Logging and debug functions
 void log_line(const scs_log_type_t type, const char* const text, ...) {
     if (!game_log) {
         return;
@@ -61,43 +75,9 @@ void log_line(const scs_log_type_t type, const char* const text, ...) {
     game_log(type, formatted);
 }
 
-void write_buffer(std::vector<char>& buffer) {
+//TODO: remove below forward decl
+void write_channel_vars();
 
-}
-
-void write_channel_vars() {
-    size_t buffer_size = 2; //header
-
-    for (auto& cah : channel_vars) {
-        buffer_size += cah->telemvar->total_size();
-    }
-
-    std::vector<char> buffer;
-    buffer.reserve(buffer_size);
-
-    //TODO: include header
-    for (auto& cah : channel_vars) {
-        cah->telemvar->write_to_buf(buffer);
-    }
-
-    write_buffer(buffer);
-}
-
-void write_telemvar_group(TelemVarGroup& tv_group) {
-    size_t buffer_size = 2 + tv_group.frame_size();
-
-    std::vector<char> buffer;
-    buffer.reserve(buffer_size);
-
-    //TODO: include header
-    for (size_t i = 0; i < tv_group.size(); i++) {
-        tv_group[i]->write_to_buf(buffer);
-    }
-
-    write_buffer(buffer);
-}
-
-//debug function
 VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
     bool on_ground[6];
 
@@ -108,7 +88,7 @@ VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
     scs_s32_t speed = *reinterpret_cast<const scs_s32_t*>(channel_vars[1]->telemvar->debug_val_ptr(SCS_U32_NIL));
 
     log_line(
-        SCS_LOG_TYPE_message, 
+        SCS_LOG_TYPE_message,
         "%s: %d %d %d %d %d %d, %s: %d",
         channel_vars[0]->telemvar->name.c_str(),
         on_ground[0],
@@ -120,8 +100,60 @@ VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
         channel_vars[1]->telemvar->name.c_str(),
         speed
     );
+
+    write_channel_vars();
+}
+#pragma endregion
+
+#pragma region Serial port handling
+void write_buffer(const std::vector<char>& buffer) {
+    DWORD bytes_written;
+    if (!WriteFile(serial_port.handle, buffer.data(), buffer.size(), &bytes_written, NULL)) {
+        log_line(SCS_LOG_TYPE_warning, "Warning: serial write failed of size %zu", buffer.size());
+    }
 }
 
+void write_channel_vars() {
+    size_t buffer_size = 1; //header
+
+    for (auto& cah : channel_vars) {
+        buffer_size += cah->telemvar->total_size();
+    }
+
+    std::vector<char> buffer;
+    buffer.reserve(buffer_size);
+
+    buffer.push_back(0); //header
+
+    for (auto& cah : channel_vars) {
+        std::scoped_lock lock(cah->telemvar_mut);
+        cah->telemvar->write_to_buf(buffer);
+    }
+
+    assert(buffer_size == buffer.size());
+
+    write_buffer(buffer);
+}
+
+void write_telemvar_group(const TelemVarGroup& tv_group) {
+    size_t buffer_size = 1 + tv_group.frame_size(); //incl header
+    
+    std::vector<char> buffer;
+    buffer.reserve(buffer_size);
+
+    buffer.push_back(tv_group.frame_header);
+
+    for (size_t i = 0; i < tv_group.size(); i++) {
+        tv_group[i]->write_to_buf(buffer);
+    }
+
+    assert(buffer_size == buffer.size());
+
+    write_buffer(buffer);
+}
+#pragma endregion
+
+#pragma region SCS API event handling
 SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const event_info, const scs_context_t context) {
     assert(event == SCS_TELEMETRY_EVENT_configuration);
     const scs_telemetry_configuration_t* const config_info = static_cast<const scs_telemetry_configuration_t*>(event_info);
@@ -149,6 +181,8 @@ SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void* const e
     if (auto group_it = config_vars.find(config_info->id); group_it != config_vars.end()) {
         auto& group = *group_it;
         group->update_group(config_info->attributes);
+        //log_line(SCS_LOG_TYPE_message, "conf");
+        write_telemvar_group(*group);
     }
 }
 
@@ -160,6 +194,8 @@ SCSAPI_VOID telemetry_gameplay_event(const scs_event_t event, const void* const 
     if (auto group_it = event_vars.find(gp_event_info->id); group_it != event_vars.end()) {
         auto& group = *group_it;
         group->update_group(gp_event_info->attributes);
+        //log_line(SCS_LOG_TYPE_message, "evt");
+        write_telemvar_group(*group);
     }
 }
 
@@ -174,7 +210,9 @@ scs_u32_t* get_dynamic_count_ptr(const std::string& set_name, const std::string&
 
     return nullptr;
 }
+#pragma endregion
 
+#pragma region Initialisation/deinitialisation
 //parses the config file into channel_vars, config_vars, event_vars
 bool load_config() {
     try {
@@ -279,10 +317,12 @@ bool load_config() {
             }
         }
 
+        char next_frame_header = 1;
+
         //load config TelemVars
         for (const json& ctv_group : config.at("config_vars")) {
             const std::string name = ctv_group.at("name").get<std::string>();
-            std::unique_ptr<TelemVarGroup> group = std::make_unique<TelemVarGroup>(name);
+            std::unique_ptr<TelemVarGroup> group = std::make_unique<TelemVarGroup>(name, next_frame_header++);
 
             for (std::unique_ptr<BaseTelemVar>& telemvar : parse_vars_object(ctv_group.at("vars"), "")) {
                 group->insert(std::move(telemvar));
@@ -294,7 +334,7 @@ bool load_config() {
         //load event TelemVars
         for (const json& ctv_group : config.at("channel_vars")) {
             const std::string name = ctv_group.at("name").get<std::string>();
-            std::unique_ptr<TelemVarGroup> group = std::make_unique<TelemVarGroup>(name);
+            std::unique_ptr<TelemVarGroup> group = std::make_unique<TelemVarGroup>(name, next_frame_header++);
 
             for (std::unique_ptr<BaseTelemVar>& telemvar : parse_vars_object(ctv_group.at("vars"), "")) {
                 group->insert(std::move(telemvar));
@@ -387,6 +427,28 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
     }
 
     //serial port
+    std::wstring serial_port_wide_name = s2ws(serial_port.name);
+    serial_port.handle = CreateFile((L"\\\\.\\" + serial_port_wide_name).c_str(), GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+    if (serial_port.handle == INVALID_HANDLE_VALUE) {
+        log_line(SCS_LOG_TYPE_error, "YATTS: Couldn't open given serial port, error: %ul", GetLastError());
+        scs_telemetry_shutdown();
+        return SCS_RESULT_generic_error;
+    }
+
+    DCB dcb;
+    SecureZeroMemory(&dcb, sizeof(dcb));
+    dcb.DCBlength = sizeof(dcb);
+
+    dcb.BaudRate = serial_port.baudrate;
+    dcb.ByteSize = 8;
+    dcb.Parity = NOPARITY;
+    dcb.StopBits = ONESTOPBIT;
+
+    if (!SetCommState(serial_port.handle, &dcb)) {
+        log_line(SCS_LOG_TYPE_error, "YATTS: Couldn't configure the serial port, error: %ul", GetLastError());
+        scs_telemetry_shutdown();
+        return SCS_RESULT_generic_error;
+    }
 
     //timer registration-------------------------------------------------------
     timer_queue = CreateTimerQueue();
@@ -397,7 +459,15 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
     }
 
     HANDLE display_state_timer; //ignored, we'll shut it down by deleting the whole queue
-    BOOL result = CreateTimerQueueTimer(&display_state_timer, timer_queue, display_state, NULL, 5000, 5000, WT_EXECUTEDEFAULT);
+    BOOL result = CreateTimerQueueTimer(
+        &display_state_timer, 
+        timer_queue, 
+        display_state, 
+        NULL, 
+        serial_port.period, 
+        serial_port.period, 
+        WT_EXECUTEDEFAULT
+    );
     if (!result) {
         log_line(SCS_LOG_TYPE_error, "YATTS: Failed to create timer, error: %ul", GetLastError());
         scs_telemetry_shutdown();
@@ -416,6 +486,10 @@ SCSAPI_VOID scs_telemetry_shutdown(void) {
         assert(result);
     }
 
+    if (serial_port.handle != INVALID_HANDLE_VALUE) {
+        CloseHandle(serial_port.handle);
+    }
+
     channel_vars.clear();
     config_vars.clear();
     event_vars.clear();
@@ -429,6 +503,7 @@ SCSAPI_VOID scs_telemetry_shutdown(void) {
     ChannelUpdateHandler::unreg_chan = nullptr;
     game_log = nullptr;
 }
+#pragma endregion
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason_for_call, LPVOID reseved) {
     return TRUE;
