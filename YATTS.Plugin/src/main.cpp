@@ -74,13 +74,6 @@ void log_line(const scs_log_type_t type, const char* const text, ...) {
 
     game_log(type, formatted);
 }
-
-//TODO: remove below forward decl
-void write_channel_vars();
-
-VOID CALLBACK display_state(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
-    write_channel_vars();
-}
 #pragma endregion
 
 #pragma region Serial port handling
@@ -128,6 +121,10 @@ void write_telemvar_group(const TelemVarGroup& tv_group) {
     assert(buffer_size == buffer.size());
 
     write_buffer(buffer);
+}
+
+VOID CALLBACK channel_timer_callback(_In_ PVOID lpParam, _In_ BOOLEAN TimerOrWaitFired) {
+    write_channel_vars();
 }
 #pragma endregion
 
@@ -440,7 +437,7 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
     BOOL result = CreateTimerQueueTimer(
         &display_state_timer, 
         timer_queue, 
-        display_state, 
+        channel_timer_callback, 
         NULL, 
         serial_port.period, 
         serial_port.period, 

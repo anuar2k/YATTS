@@ -7,7 +7,7 @@
   "serial_port": {
     "name": "COM5",
     "baudrate": 115200,
-    "period": 250
+    "period": 50
   },
   "channel_vars": [
     {
@@ -26,18 +26,28 @@
           "name": "speed",
           "type": 5,
           "float_converter": {
-            "type": "unit",
-            "converter": "MS_TO_KMH",
+            "type": "multiplier",
+            "multiplier": 0.11309733552923255658465516179806,
             "int_cast_mode": "NONE"
           }
         },
         {
           "name": "engine.rpm",
-          "type": 5
+          "type": 5,
+          "float_converter": {
+            "type": "multiplier",
+            "multiplier": 0.00157079632679489661923132169164,
+            "int_cast_mode": "NONE"
+          }
         },
         {
           "name": "navigation.speed.limit",
-          "type": 5
+          "type": 5,
+          "float_converter": {
+            "type": "unit",
+            "converter": "MS_TO_KMH",
+            "int_cast_mode": "ROUND"
+          }
         },
         {
           "name": "displayed.gear",
